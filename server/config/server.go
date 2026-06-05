@@ -17,7 +17,7 @@ var DefaultRatelimitConfig = ratelimit.RatelimitConfig{
 	PerIp: ratelimit.TokenBucketConfig{
 		MaxTokens:      5,
 		RefillRate:     2,
-		SendRetryAfter: true,
+		RetryAfter: true,
 	},
 	ErrorMessage: "Too many requests!",
 }
