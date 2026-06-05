@@ -35,11 +35,6 @@ type userIp struct {
 	lastSeen time.Time
 }
 
-type Ratelimit struct{
-	global fixedWindowCounter
-	perIp tokenBucket
-	ErrorMessage string
-}
 
 func initRatelimiter(config RatelimitConfig){
 	// checks for invalid data
