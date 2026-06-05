@@ -1,6 +1,8 @@
 package config
 
-import "go-backend/server/ratelimit"
+import (
+	"go-backend/server/ratelimit"
+)
 
 type ServerConfig struct {
 	Host string

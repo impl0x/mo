@@ -3,17 +3,11 @@ package ratelimit
 import (
 	"go-backend/modules/logger"
 	"strings"
-	"time"
 )
+
 //? configs
-type FixedWindowCounterConfig struct { // Global rl
-	MaxRequests uint16 // per sec
-}
-type TokenBucketConfig struct { // PerIp rl
-	MaxTokens  uint8
-	RefillRate uint8 // per sec
-	RetryAfter bool  // sends the "retry_after" in json response, defaults to true
-}
+
+
 type RatelimitConfig struct {
 	Global       FixedWindowCounterConfig
 	PerIp        TokenBucketConfig
@@ -21,27 +15,17 @@ type RatelimitConfig struct {
 }
 
 //? ratelimiters
-type fixedWindowCounter struct {
-	config  FixedWindowCounterConfig
-	counter uint16
-}
 
-type tokenBucket struct {
-	config TokenBucketConfig
-	ips    []userIp
-}
+
+
 
 type ratelimit struct{
-	global fixedWindowCounter
-	perIp tokenBucket
+	global FixedWindowCounter
+	perIp TokenBucket
 	errorMsg string
 }
 
-type userIp struct {
-	ip       string
-	tokens   uint8
-	lastSeen time.Time
-}
+
 
 //? main functions
 var ratelimiter ratelimit
@@ -57,8 +41,8 @@ func Init(config RatelimitConfig) {
 	} else if strings.TrimSpace(config.ErrorMessage) == "" {
 		logger.Warn("Error message as receivied in config is empty space! Will fall back to the default message", "ratelimit error", "ErrorMessage value")
 	}
-	ratelimiter.global.config=config.Global
-	ratelimiter.perIp.config=config.PerIp
+	ratelimiter.global.Config=config.Global
+	ratelimiter.perIp.Config=config.PerIp
 	ratelimiter.errorMsg=config.ErrorMessage
 }
 
