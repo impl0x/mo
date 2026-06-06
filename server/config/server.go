@@ -12,14 +12,18 @@ type ServerConfig struct {
 	Ratelimit   ratelimit.RatelimitConfig
 }
 
-var DefaultRatelimitConfig = ratelimit.RatelimitConfig{
-	Global: ratelimit.FixedWindowCounterConfig{
-		MaxRequests: 100,
-	},
-	PerIp: ratelimit.TokenBucketConfig{
-		MaxTokens:      5,
-		RefillRate:     2,
-		RetryAfter: true,
-	},
-	ErrorMessage: "Too many requests!",
+// Uses the default value for some fields
+// and takes the integral values from parameters
+func RatelimitConfigWithDefaults(globalMaxRequests uint16, localMaxTokens, localRefillRate uint8) *ratelimit.RatelimitConfig {
+	return &ratelimit.RatelimitConfig{
+		Global: ratelimit.FixedWindowCounterConfig{
+			MaxRequests: globalMaxRequests,
+		},
+		Local: ratelimit.TokenBucketConfig{
+			MaxTokens:  localMaxTokens,
+			RefillRate: localRefillRate,
+			RetryAfter: true,
+		},
+		ErrorMessage: "Too many requests!",
+	}
 }
