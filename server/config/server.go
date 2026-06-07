@@ -9,7 +9,7 @@ type ServerConfig struct {
 	Port uint16
 
 	LogRequests bool
-	Ratelimit   ratelimit.RatelimitConfig
+	Ratelimiter   ratelimit.RatelimitConfig
 }
 
 // Uses the default value for some fields
