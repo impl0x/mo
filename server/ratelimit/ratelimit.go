@@ -1,11 +1,13 @@
 package ratelimit
 
 import (
+	// "go-backend/server/core/servertypes"
 	"net/http"
 )
 
 type Ratelimiter interface{
 	Allow(next http.Handler)http.Handler
+	
 }
 
 
