@@ -22,6 +22,6 @@ type UserIp struct {
 	lastSeen time.Time
 }
 
-func (rl TokenBucket) Allow(next http.Handler) http.Handler {
+func (rl *TokenBucket) Allow(next http.Handler) http.Handler {
 	return next
 }

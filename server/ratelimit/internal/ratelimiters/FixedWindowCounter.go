@@ -13,6 +13,6 @@ type FixedWindowCounter struct {
 	counter uint16
 }
 
-func (rl FixedWindowCounter) Allow(next http.Handler) http.Handler {
+func (rl *FixedWindowCounter) Allow(next http.Handler) http.Handler {
 	return next
 }
