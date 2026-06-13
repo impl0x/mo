@@ -4,15 +4,27 @@ import (
 	"net/http"
 )
 
+
+// ? Configs
 type FixedWindowCounterConfig struct {
 	MaxRequests uint16 // per sec
 }
 
-type FixedWindowCounter struct {
-	Config  FixedWindowCounterConfig
+func NewFixedWindowCounter(config FixedWindowCounterConfig)Ratelimiter{
+	return &fixedWindowCounter{
+		config: config,
+	}
+}
+
+
+// ? Internal state
+type fixedWindowCounter struct {
+	config  FixedWindowCounterConfig
 	counter uint16
 }
 
-func (rl *FixedWindowCounter) Allow(next http.Handler) http.Handler {
-	return next
+func (rl *fixedWindowCounter) Allow(r *http.Request) bool {
+	// Todo: finish logic
+	return true
 }
+

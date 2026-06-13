@@ -5,14 +5,22 @@ import (
 	"time"
 )
 
+// ? Configs
 type TokenBucketConfig struct {
 	MaxTokens  uint8
 	RefillRate uint8 // per sec
 	RetryAfter bool  // sends the "retry_after" in json response, defaults to true
 }
+func NewTokenBucket(config TokenBucketConfig)Ratelimiter{
+	return &tokenBucket{
+		config: config,
+	}
+}
 
-type TokenBucket struct {
-	Config TokenBucketConfig
+
+// ? Internal state
+type tokenBucket struct {
+	config TokenBucketConfig
 	ips    []UserIp
 }
 
@@ -22,6 +30,8 @@ type UserIp struct {
 	lastSeen time.Time
 }
 
-func (rl *TokenBucket) Allow(next http.Handler) http.Handler {
-	return next
+func (rl *tokenBucket) Allow(r *http.Request) bool {
+	// Todo: finish logic
+	return true
 }
+

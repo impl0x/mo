@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	// "go-backend/server/core/servertypes"
+	"go-backend/server/ratelimit/internal/ratelimiters"
 	"net/http"
 )
 
@@ -19,18 +20,6 @@ type RatelimitConfig [G any, L any] struct {
 }
 
 
-
-//? main ratelimiter
-type ratelimit struct{
-	global ratelimiters.FixedWindowCounter
-	local ratelimiters.TokenBucket
-	errorMsg string
-}
-
-
-//? main functions
-var ratelimiter ratelimit
-
 // func Init  [G any, L any] (config RatelimitConfig[G, L]) {
 	// checks for invalid config data
 	// if config.Global.MaxRequests == 0 {
@@ -47,6 +36,3 @@ var ratelimiter ratelimit
 	// ratelimiter.errorMsg=config.ErrorMessage
 // }
 
-func Init[T Ratelimiter](){
-	
-}
