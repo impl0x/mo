@@ -1,33 +1,31 @@
 package ratelimit
 
 import (
+	"go-backend/server/core/servertypes"
+	"go-backend/server/ratelimit/ratelimiters"
 	"net/http"
 )
 
-
-
-
-//? configs
-type RatelimitConfig [G any, L any] struct {
-	Global       G // Global refers to the entire server application, if max requests in a minute second exceeds it will serve 429 to everyone and every endpoint.
-	Local        L	// Local refers to per session ratelimiting, based on IP and uses token bucket algorithm
-	ErrorMessage string
+type Ratelimit struct {
+	StatusCode   int    // default to 429
+	ErrorMessage string // default to "Too many requests!"
 }
 
-
-// func Init  [G any, L any] (config RatelimitConfig[G, L]) {
-	// checks for invalid config data
-	// if config.Global.MaxRequests == 0 {
-	// 	logger.Fatal("Max requests cannot be 0 !", "ratelimit error", "global")
-	// } else if config.Local.MaxTokens == 0 {
-	// 	logger.Fatal("Max tokens cannot be 0 !", "ratelimit error", "per ip")
-	// } else if config.Local.RefillRate == 0 {
-	// 	logger.Fatal("Refill rate cannot be 0 !", "ratelimit error", "per ip")
-	// } else if strings.TrimSpace(config.ErrorMessage) == "" {
-	// 	logger.Warn("Error message as receivied in config is empty space! Will fall back to the default message", "ratelimit error", "ErrorMessage value")
-	// }
-	// ratelimiter.global.Config=config.Global
-	// ratelimiter.local.Config=config.Local
-	// ratelimiter.errorMsg=config.ErrorMessage
-// }
-
+// returns a middleware which implements the ratelimiter
+func (r *Ratelimit) NewRatelimiter(rl ratelimiters.Ratelimiter) servertypes.Middleware {
+	if r.ErrorMessage == "" {
+		r.ErrorMessage = "Too many requests!"
+	} else if r.StatusCode == 0 {
+		if r.StatusCode > 599 {
+			panic("Status code cannot be greater than 599")
+		}
+		r.StatusCode = 429
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !rl.Allow(r){
+				// TODO: return a 429 and ErrorMessage in proper format
+			}
+		})
+	}
+}
