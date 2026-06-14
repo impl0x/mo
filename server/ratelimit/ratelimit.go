@@ -1,7 +1,7 @@
 package ratelimit
 
 import (
-	"go-backend/server/core/servertypes"
+	"go-backend/server/core/core_types"
 	"go-backend/server/ratelimit/ratelimiters"
 	"net/http"
 )
@@ -12,7 +12,7 @@ type Ratelimit struct {
 }
 
 // returns a middleware which implements the ratelimiter
-func (r *Ratelimit) NewRatelimiter(rl ratelimiters.Ratelimiter) servertypes.Middleware {
+func (r *Ratelimit) NewRatelimiter(rl ratelimiters.Ratelimiter) core_types.Middleware {
 	if r.ErrorMessage == "" {
 		r.ErrorMessage = "Too many requests!"
 	} else if r.StatusCode == 0 {

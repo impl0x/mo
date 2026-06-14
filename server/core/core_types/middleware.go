@@ -1,4 +1,4 @@
-package servertypes
+package core_types
 
 import "net/http"
 
