@@ -52,7 +52,7 @@ var success = Level{
 	Label: "success",
 }
 
-var error = Level{
+var error_ = Level{
 	Color: Colors["red"],
 	Label: "error",
 }
@@ -160,7 +160,7 @@ func Success(v ...string) {
 	log(success,v)
 }
 func Error(v ...string) {
-	log(error,v)
+	log(error_,v)
 }
 func Fatal(v ...string) {
 	log(fatal,v)
