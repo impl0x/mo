@@ -149,7 +149,7 @@ func (lvl Level) makeLogMessage(message string, args []string) string {
 	return finalString
 }
 
-//? Func definations for levels
+//? Func definitions for levels
 func Info(v ...string) {
 	log(info,v)
 }
