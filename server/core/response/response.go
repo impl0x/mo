@@ -20,6 +20,12 @@ var (
 )
 
 func NewResponse(cType ContentType, body any, w http.ResponseWriter) *Response {
+	 
+	if _,ok:= body.(string); cType==Text && !ok{
+		panic("Invalid type provided")
+	}
+
+	
 	return &Response{
 		ContentType:    cType,
 		StatusCode:     200, // default, if user wants he can change the field after initialization.
