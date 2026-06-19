@@ -12,4 +12,3 @@ func (j JSONSerializer) Deserialize(c *Context, target any) error {
 }
 
 var DefaultJsonSerializer = JSONSerializer{}
-
