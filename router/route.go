@@ -10,9 +10,6 @@ type Route struct {
 	Name        string
 	Handler     mo.HandlerFunc
 	PreMiddlewares []mo.MiddlewareFunc
-	PostMiddlewares []mo.MiddlewareFunc
 }
 
-func t()  {
-	
-}
+type Routes []Route
