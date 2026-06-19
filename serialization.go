@@ -10,7 +10,3 @@ type ContentType struct {
 	formatter Serializer
 }
 
-var JSON=ContentType{
-	value: "application/json",
-	formatter: DefaultJsonSerializer,
-}

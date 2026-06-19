@@ -1,29 +1,35 @@
 package mo
 
 import (
+	"encoding/json"
 	"net/http"
-
 )
 
 type HttpError struct {
-	StatusCode   int
-	Response *Response
+	*Response
 }
 
-func NewError() HttpError {
-	return HttpError{
-		http.StatusBadRequest,
+func NewError(c ContentType, body any) *HttpError {
+	var b any
+	switch c {
+	case TEXT:
+		b = body
+	case JSON:
+		b = map[string]any{"errors": body}
+	}
+	return &HttpError{
 		&Response{
-			ContentType: JSON,
-			Body: map[string]any{
-				"error":"bad request",
-			},
-			StatusCode: http.StatusBadRequest,
+			ContentType: c,
+			Body:        b,
+			StatusCode:  http.StatusBadRequest,
 		},
 	}
 }
 
-func (h *HttpError) Write(c *Context){
-	
-	
+func (h *HttpError) Error() string {
+	val, err := json.Marshal(h.Body)
+	if err != nil {
+		return "unknown error"
+	}
+	return string(val)
 }

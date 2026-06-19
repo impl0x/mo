@@ -13,3 +13,7 @@ func DefaultResponse() *Response {
 		StatusCode:  http.StatusOK,
 	}
 }
+
+func (r *Response) write(c *Context){
+	r.ContentType.formatter.Serialize(c,r.Body)
+}

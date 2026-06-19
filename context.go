@@ -19,3 +19,6 @@ func NewRequestContext(w http.ResponseWriter, r *http.Request)*Context{
 func (c *Context) GetResponse()http.ResponseWriter{
 	return c.response
 }
+func (c *Context) GetRequest () *http.Request{
+	return c.request
+}
