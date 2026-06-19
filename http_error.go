@@ -3,23 +3,27 @@ package mo
 import (
 	"net/http"
 
-	"github.com/impl0x/mo/responses"
 )
 
 type HttpError struct {
 	StatusCode   int
-	Response responses.Response
+	Response *Response
 }
 
 func NewError() HttpError {
 	return HttpError{
 		http.StatusBadRequest,
-		nil,
+		&Response{
+			ContentType: JSON,
+			Body: map[string]any{
+				"error":"bad request",
+			},
+			StatusCode: http.StatusBadRequest,
+		},
 	}
 }
 
 func (h *HttpError) Write(c *Context){
-	c.response.WriteHeader(h.StatusCode)
-	// if h.ResponseBody
-	// c.response.Write(h.ResponseBody)
+	
+	
 }
