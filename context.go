@@ -29,6 +29,13 @@ func (c *Context) writeContentType(value string) {
 	}
 }
 
+func (c *Context) Request()*http.Request{
+	return c.request
+}
+func (c *Context) Response()http.ResponseWriter{
+	return c.response
+}
+
 // Redirect redirects the request to a provided URL with status code.
 func (c *Context) Redirect(code int, url string) error {
 	if code < 300 || code > 308 {

@@ -14,7 +14,7 @@ type Mo struct {
 
 func New() *Mo {
 	return &Mo{
-		router:           NewDefaultRouter(),
+		router:           NewSlowRouter(),
 		HTTPErrorHandler: DefaultHTTPErrorHandler(false),
 	}
 }
