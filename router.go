@@ -1,22 +1,29 @@
 package mo
 
-type Route struct {
-	Path    string
-	Method  string
-	Handler HandlerFunc
-	Middlewares []Middleware
-}
-type Router struct {
-	Routes []Route
+type Router interface {
+	Find(string, string) (Route, HttpErrorInterface)
+	Add(Route)
 }
 
-func NewDefaultRouter()*Router{
-	return &Router{}
+type Route struct {
+	Path        string
+	Method      string
+	Handler     HandlerFunc
+	Middlewares []Middleware
 }
 
 var emptyRoute = Route{}
 
-func (r *Router) Route(path string, method string) (Route, HttpErrorInterface) {
+// o(n)
+type SlowRouter struct {
+	Routes []Route
+}
+
+func NewDefaultRouter() *SlowRouter {
+	return &SlowRouter{}
+}
+
+func (r *SlowRouter) Find(path string, method string) (Route, HttpErrorInterface) {
 	for _, v := range r.Routes {
 		if path == v.Path {
 			if method == v.Method {
@@ -26,4 +33,8 @@ func (r *Router) Route(path string, method string) (Route, HttpErrorInterface) {
 		}
 	}
 	return emptyRoute, ErrNotFound
+}
+
+func (r *SlowRouter) Add(ro Route) {
+	r.Routes = append(r.Routes, ro)
 }
