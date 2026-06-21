@@ -8,7 +8,7 @@ type Middleware func(HandlerFunc) HandlerFunc
 
 type Mo struct {
 	router           *Router
-	HTTPErrorHandler HTTPErrorHandler
+	HTTPErrorHandler HTTPErrorHandler // Error handler must also handle nil, because every handler return is at the end handed over to the errorHandler even if its a nil
 }
 
 func New() *Mo {
@@ -30,11 +30,10 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	route, err := m.router.Route(r.URL.Path, r.Method)
 	if err != nil {
-		println("Routing error")
 		m.HTTPErrorHandler(newContext, err) // either Method wrong or path Not found
 		return
 	}
-	route.Handler(newContext)
+	m.HTTPErrorHandler(newContext,route.Handler(newContext))
 }
 
 func (m *Mo) GET(path string, handler HandlerFunc, mi ...Middleware) {

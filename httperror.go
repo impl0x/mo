@@ -10,7 +10,9 @@ type HttpErrorInterface interface {
 	JsonFormat() any
 	error
 }
-
+// To return a custom formatted message, return a struct implementing HttpErrorInterface
+// Or just return c.Json with a statusCode
+// Or just define a custom function for yourself, anything works.
 func NewHTTPError(code int, message string) HttpErrorInterface {
 	return &HttpError{
 		Code:    code,
@@ -67,9 +69,8 @@ func (he httpError) Error() string {
 	return fmt.Sprintf("code=%d, message=%v", he.Code, he.StatusText())
 }
 func (he httpError) JsonFormat() any {
-	return struct {
-		Message string `json:"message"`
-	}{
-		Message: he.StatusText(),
+	return map[string]any{
+		"code":he.StatusCode(),
+		"message":he.StatusText(),
 	}
 }

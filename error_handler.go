@@ -1,12 +1,25 @@
 package mo
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/impl0x/mo/modules/logger"
+)
 
 type HTTPErrorHandler func(*Context, error)
 
+// if err==nil, returns
+// if response already committed (headers written), returns and logs
+// if error is of type HttpErrorInterface, calls c.Json() with e.StatusCode() and e.JsonFormat()
+// if you want a custom error message returned, implement the HTTPErrorInterface.
+// Then return a valid json from JsonFormat() method and a valid status-code from StatusCode()
 func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 	return func(c *Context, err error) {
+		if err==nil{
+			return
+		}
 		if c.response.committed{
+			logger.Error("Cannot return error, response already committed!","err",err.Error())
 			return
 		}
 		switch e := err.(type) {
