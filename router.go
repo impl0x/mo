@@ -2,12 +2,11 @@ package mo
 
 import (
 	"net/http"
-	"strings"
 )
 
 type Router interface {
-	Find(string, string) (Route, HttpErrorInterface)
-	Add(Route)
+	Find(string, string) (*Route, HttpErrorInterface)
+	Add(*Route)
 }
 
 type Route struct {
@@ -17,30 +16,29 @@ type Route struct {
 	Middlewares []Middleware
 }
 
-var emptyRoute = Route{}
 
 // o(n)
 type SlowRouter struct {
-	Routes []Route
+	Routes []*Route
 }
 
 func NewSlowRouter() *SlowRouter {
 	return &SlowRouter{}
 }
 
-func (r *SlowRouter) Find(path string, method string) (Route, HttpErrorInterface) {
+func (r *SlowRouter) Find(path string, method string) (*Route, HttpErrorInterface) {
 	for _, v := range r.Routes {
 		if path == v.Path {
 			if method == v.Method {
 				return v, nil
 			}
-			return emptyRoute, ErrMethodNotAllowed
+			return nil, ErrMethodNotAllowed
 		}
 	}
-	return emptyRoute, ErrNotFound
+	return nil, ErrNotFound
 }
 
-func (r *SlowRouter) Add(ro Route) {
+func (r *SlowRouter) Add(ro *Route) {
 	r.Routes = append(r.Routes, ro)
 }
 
@@ -101,21 +99,21 @@ func newMethodHandler(method string, handler HandlerFunc) *methodHandlers{
 	return &mh
 }
 
-func (r *RadixRouter) Add(ro Route) {
-	pathSplits:=strings.Split(ro.Path, "/")
-	if r.root.child == nil {
-		var n *node
-		for _,v:=range pathSplits{
-			n=&node{
-				part: v,
-				// kind: ,,
-			}
-		}
-		r.root.child = &node{
-			part:           ro.Path,
-			methodHandlers: newMethodHandler(ro.Method,ro.Handler),
-			// kind: 
-		}
-	}
+// func (r *RadixRouter) Add(ro Route) {
+// 	pathSplits:=strings.Split(ro.Path, "/")
+// 	if r.root.child == nil {
+// 		var n *node
+// 		for _,v:=range pathSplits{
+// 			n=&node{
+// 				part: v,
+// 				// kind: ,,
+// 			}
+// 		}
+// 		r.root.child = &node{
+// 			part:           ro.Path,
+// 			methodHandlers: newMethodHandler(ro.Method,ro.Handler),
+// 			// kind: 
+// 		}
+// 	}
 
-}
+// }
