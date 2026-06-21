@@ -3,13 +3,22 @@ package mo
 import (
 	"encoding/json"
 	"net/http"
-
 	"github.com/impl0x/mo/modules/logger"
 )
 
+type Response struct{
+	http.ResponseWriter
+	committed bool
+}
+
+func (r *Response)WriteHeader(statusCode int){
+	r.ResponseWriter.WriteHeader(statusCode)
+	r.committed=true
+}
+
 type Context struct {
 	request  *http.Request
-	response http.ResponseWriter
+	response *Response
 	Mo       *Mo
 }
 

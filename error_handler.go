@@ -6,6 +6,9 @@ type HTTPErrorHandler func(*Context, error)
 
 func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 	return func(c *Context, err error) {
+		if c.response.committed{
+			return
+		}
 		switch e := err.(type) {
 		case httpError:
 			c.JSON(e.Code, e.JsonFormat())

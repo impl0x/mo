@@ -23,7 +23,7 @@ func (m *Mo) Start(addr string) error {
 func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	newContext := &Context{
 		request:  r,
-		response: w,
+		response: &Response{w,false},
 		Mo:       m,
 	}
 	route, err := m.router.Route(r.URL.Path, r.Method)
