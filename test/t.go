@@ -2,7 +2,7 @@ package main
 
 import "strings"
 
-func main() {
+func main1() {
 	p1 := [...]string{"/",
 		"/health/",
 		"/users",

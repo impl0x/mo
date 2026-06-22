@@ -53,6 +53,17 @@ type node struct{
 	handlers *methodHandlers
 }
 
+// pathPart is a string without any slashes.
+// returns the children which matches with the pathPart
+func (n *node) next(pathPart string)*node{
+	for _,v:=range n.children{
+		if pathPart==v.path{
+			return v
+		}
+	}
+	return nil
+}
+
 type Router struct{
 	tree *node
 	removeLeadingSlashes bool
@@ -75,12 +86,14 @@ func (r *Router)add(path, method string, handler HandlerFunc,)error{
 	if r.removeLeadingSlashes{
 		path=strings.TrimSuffix("/",path)
 	}
-	pathSplits:=strings.Split(path, "/")
-	depth:=len(pathSplits)-1 // -1 because split returns both sides of the splitting string, even if empty. 
+	pathSplits:=strings.Split(path, "/")[1:] //[1:] due to split returning empty string
 
-	for _,c:=range r.tree.children{
-		if c.path==path{
-			for _,c=range // burmarika ai slopper
-		}
+	var match *node
+	for _,v:=range pathSplits{
+		match=r.tree.next(v)
 	}
+	if match==nil{
+		
+	}
+	return nil
 }
