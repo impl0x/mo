@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"net/http"
-
 	"github.com/impl0x/mo"
 )
 

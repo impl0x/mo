@@ -12,8 +12,8 @@ type tokenBucketConfig struct {
 	maxCapacity           uint16
 	rate                  uint16 // per sec
 	GetIp                 GetIp  // Logic to get Ips from requests. if using a proxy service then put your own logic in this function. Do not mutate after starting
-	IpStickySession       uint16 // seconds, cleans the idle ips above this threshold
-	IpCleanTickerDuration uint16 // seconds, checks every T amount of seconds to remove the idle ips
+	IpStickDuration       uint16 // seconds, cleans the idle ips above this threshold
+	IpCleanerTickDuration uint16 // seconds, checks every T amount of seconds to remove the idle ips
 }
 
 type tokenBucket struct {
@@ -48,9 +48,11 @@ func NewTokenBucket(maxCapacity, refillRate uint16) *tokenBucket {
 			maxCapacity: maxCapacity,
 			rate:        refillRate,
 			GetIp:       DefaultGetIp(true),
+			IpStickDuration: 500,
+			IpCleanerTickDuration: 100,
 		},
 	}
-	tb.cleanupRunner()
+	go tb.cleanupRunner()
 	return &tb
 }
 
@@ -81,8 +83,8 @@ func (tb *tokenBucket) findBucket(ip string) (bool, bool) {
 	defer tb.mu.RUnlock()
 	for _, b := range tb.buckets {
 		if ip == b.ip {
-			tb.refill(b)
 			b.mu.Lock()
+			tb.refill(b)
 			defer b.mu.Unlock()
 			if b.tokens >= 1 {
 				b.tokens--
@@ -96,23 +98,21 @@ func (tb *tokenBucket) findBucket(ip string) (bool, bool) {
 func (tb *tokenBucket) refill(u *user) {
 	now := time.Now()
 	elapsed := uint16(now.Sub(u.lastRefillAt).Seconds()) // trust me nobody's visiting the api after ~45 days
-	u.mu.Lock()
 	u.tokens = min(tb.Config.maxCapacity, u.tokens+elapsed*tb.Config.rate) // even if they do, it caps out at the 16 bit limit.
 	u.lastRefillAt = now
 	u.lastSeenAt = now
-	u.mu.Unlock()
 }
 
 
 func (tb *tokenBucket) cleanupRunner() {
-	ticker := time.NewTicker(time.Duration(tb.Config.IpCleanTickerDuration) * time.Second)
+	ticker := time.NewTicker(time.Duration(tb.Config.IpCleanerTickDuration) * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
 		var newBuckets []*user
 		tb.mu.Lock()
 		for i, b := range tb.buckets {
 			idle := time.Since(b.lastSeenAt)
-			if idle > (time.Duration(tb.Config.IpStickySession) * time.Second) {
+			if idle > (time.Duration(tb.Config.IpStickDuration) * time.Second) {
 				newBuckets=append(tb.buckets[:i], tb.buckets[i+1:]... )	
 			}
 		}
