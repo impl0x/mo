@@ -5,6 +5,7 @@ import (
 	"github.com/impl0x/mo/modules/logger"
 )
 
+// Error Handler must handle nil, HttpErrorInterface and error. (internal)
 type HTTPErrorHandler func(*Context, error)
 
 // if err==nil, returns
