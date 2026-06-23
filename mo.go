@@ -2,6 +2,8 @@ package mo
 
 import (
 	"net/http"
+
+	"github.com/impl0x/mo/modules/logger"
 )
 
 type HandlerFunc func(c *Context) error
@@ -47,6 +49,10 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (m *Mo) add(path string, method string, handler HandlerFunc, mi []Middleware) *Route{
 	r:=&Route{path, method, handler, mi}
+	if m.router==nil{
+		logger.Fatal("error router nil")
+	}
+	logger.Info("d")
 	m.router.Add(r)
 	return r
 }
@@ -73,8 +79,10 @@ func (m *Mo) HEAD(path string, handler HandlerFunc, mi ...Middleware) *Route {
 	return m.add(path, http.MethodHead, handler, mi)
 }
 
-func (m *Mo) Group(prefix string) *Group{
+// Add middlewares using "Use" before registering paths
+func NewGroup(prefix string, mi ...Middleware) *Group{
 	return &Group{
 		prefix: prefix,
+		Middlewares: mi,
 	}
 }

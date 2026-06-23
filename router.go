@@ -9,7 +9,7 @@ type Route struct {
 	Path        string
 	Method      string
 	Handler     HandlerFunc
-	Middlewares []Middleware
+	Middlewares []Middleware // returns a copy of slice, don't mutate
 }
 
 

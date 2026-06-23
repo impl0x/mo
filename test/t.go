@@ -1,19 +1,26 @@
 package main
 
-import "strings"
+import (
+	// "strings"
 
-func main1() {
-	p1 := [...]string{"/",
-		"/health/",
-		"/users",
-		"/users/:id",
-		"/users/:id/posts",
-	}
-	for _,v:=range p1{
-		k:=strings.Split(v, "/")
-		for _,l:=range k{
-			print(l)
-		}
-		println(len(k))
+	"github.com/impl0x/mo"
+	"github.com/impl0x/mo/modules/logger"
+)
+
+func main() {
+	m:=mo.New()
+	users:=mo.NewGroup("/users")
+	users.Use(logUsers)
+	users.GET("/1",func(c *mo.Context) error {
+		logger.Mo("Test")
+		return nil
+	})
+	m.Start(":8080")
+}
+
+func logUsers(next mo.HandlerFunc)mo.HandlerFunc{
+	return func(c *mo.Context) error {
+		logger.Info("User log check")
+		return next(c)
 	}
 }
