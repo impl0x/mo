@@ -2,12 +2,11 @@ package ratelimiters
 
 import (
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
 
-type GetIp func(r *http.Request) string
+
 type tokenBucketConfig struct {
 	maxCapacity           uint16
 	rate                  uint16 // per sec
@@ -28,16 +27,6 @@ type user struct {
 	lastRefillAt time.Time
 	lastSeenAt   time.Time
 	mu           sync.RWMutex
-}
-
-func DefaultGetIp(splitPort bool) GetIp {
-	return func(r *http.Request) string {
-		if splitPort {
-			return strings.Split(r.RemoteAddr, ":")[0]
-		} else {
-			return r.RemoteAddr
-		}
-	}
 }
 
 // IP based ratelimiting
