@@ -2,6 +2,7 @@ package mo
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/impl0x/mo/modules/logger"
@@ -20,7 +21,8 @@ func (r *Response) WriteHeader(statusCode int) {
 type Context struct {
 	request  *http.Request
 	response *Response
-	Mo       *Mo
+	Mo       *Mo            // original Mo instance
+	Store    map[string]any // stores context values
 }
 
 func (c *Context) writeContentType(value string) {
@@ -78,4 +80,24 @@ func writeResp(resp http.ResponseWriter, b []byte) {
 		logger.Mo("Client disconnected! couldn't write response")
 		return
 	}
+}
+
+// ErrNonExistentKey is error that is returned when key does not exist
+var ErrNonExistentKey = errors.New("non existent key")
+
+// ErrInvalidKeyType is error that is returned when the value is not castable to expected type.
+var ErrInvalidKeyType = errors.New("invalid key type")
+
+func ContextGet[T any](c *Context, key string) (T, error) {
+	value, ok := c.Store[key]
+	if !ok {
+		var zero T
+		return zero, ErrNonExistentKey
+	}
+	typed, ok := value.(T)
+	if !ok {
+		var zero T
+		return zero, ErrInvalidKeyType
+	}
+	return typed, nil
 }
