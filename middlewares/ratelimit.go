@@ -1,15 +1,11 @@
 package middlewares
 
 import (
-	"net/http"
 	"github.com/impl0x/mo"
+	"github.com/impl0x/mo/middlewares/ratelimiters"
 )
 
-type Ratelimter interface {
-	Allow(r *http.Request) bool
-}
-
-func Ratelimit(r Ratelimter) mo.Middleware {
+func Ratelimit(r ratelimiters.Ratelimter) mo.Middleware {
 	return func(next mo.HandlerFunc) mo.HandlerFunc {
 		return func(c *mo.Context) error {
 			if !r.Allow(c.Request()) {

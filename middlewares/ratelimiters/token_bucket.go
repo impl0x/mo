@@ -58,13 +58,13 @@ func (tb *tokenBucket) Allow(r *http.Request) bool {
 
 func (tb *tokenBucket) addNewBucket(ip string){
 	tb.mu.Lock()
+	defer tb.mu.Unlock()
 	tb.buckets = append(tb.buckets, &user{
 		ip:           ip,
 		tokens:       tb.Config.maxCapacity,
 		lastRefillAt: time.Now(),
 		lastSeenAt:   time.Now(),
 	})
-	tb.mu.Unlock()
 }
 
 func (tb *tokenBucket) findBucket(ip string) (bool, bool) {

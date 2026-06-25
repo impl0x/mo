@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+type Ratelimter interface {
+	Allow(r *http.Request) bool
+}
+
 type GetIp func(r *http.Request) string
 
 func DefaultGetIp(splitPort bool) GetIp {
