@@ -27,8 +27,12 @@ var NumTypes = []reflect.Kind{
 
 const validatorTag = "validate"
 
-var emailRx = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-var urlRx = regexp.MustCompile(`https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)`)
+type ValidationErrors struct {
+	
+}
+
+var emailRx = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]*[a-zA-Z][a-zA-Z0-9]*$`)
+var urlRx = regexp.MustCompile(`^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$`)
 var ErrTypeError = errors.New("Wrong type")
 var ErrValidation = errors.New("Validation error")
 var ErrMissingField = errors.New("Missing field")
@@ -43,7 +47,6 @@ func Validate(v any) error {
 	if rt.Kind() != reflect.Struct {
 		return ErrInvalidStruct
 	}
-	println(rv.NumField())
 	for i := 0; i < rv.NumField(); i++ {
 		v := rv.Field(i)
 		t := rt.Field(i)
@@ -59,6 +62,10 @@ func Validate(v any) error {
 		if ok := slices.Contains(requirements, "required"); ok {
 			if v.IsZero() {
 				return ErrMissingField
+			}
+		} else {
+			if v.IsZero() {
+				continue
 			}
 		}
 		kind := v.Kind()
@@ -100,7 +107,6 @@ func Validate(v any) error {
 						}
 					} else if slices.Contains(NumTypes, kind) {
 						if v.Convert(reflect.TypeFor[float64]()).Float() < min {
-							println("DDDD")
 							return ErrValidation
 						}
 					} else {
