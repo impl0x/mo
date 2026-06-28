@@ -30,13 +30,14 @@ const validatorTag = "validate"
 var emailRx = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]*[a-zA-Z][a-zA-Z0-9]*$`)
 var urlRx = regexp.MustCompile(`^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$`)
 
-func Validate(v any) []ValidationError {
-	errs := []ValidationError{}
-	rv := reflect.ValueOf(v)          // stores the value
-	if rv.Kind() == reflect.Pointer { // if v is a pointer then we dereference it
+func Validate(target any) []ValidationError {
+	var errs []ValidationError
+	rv := reflect.ValueOf(target)          // stores the value
+	rt := reflect.TypeOf(target) // stores the type
+	if rv.Kind() == reflect.Ptr { // if v is a pointer then we dereference it
 		rv = rv.Elem()
+		rt=rt.Elem()
 	}
-	rt := reflect.TypeOf(v) // stores the type
 	if rt.Kind() != reflect.Struct {
 		errs = append(errs, newUserError("Not a struct"))
 		return errs // if not struct we immediately return an error
@@ -72,9 +73,6 @@ func Validate(v any) []ValidationError {
 			}
 		}
 	}
-	if len(errs) == 0 {
-		return nil
-	}
 	return errs
 }
 
@@ -83,7 +81,7 @@ func matchRegexRule(rx *regexp.Regexp, v reflect.Value, kind reflect.Kind, field
 		return newTypeError(kind.String(), reflect.String.String(), fieldName)
 	}
 	if !rx.MatchString(v.String()) {
-		return nil
+		return newValidateError("Not a valid URL",fieldName)
 	}
 	return nil
 }
