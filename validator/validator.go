@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -105,6 +104,34 @@ func (te *TypeError) JsonFormat() map[string]any {
 	}
 }
 
+type ValidateError struct {
+	detail      string
+	jsonDetails struct {
+		message string
+		field   string
+	}
+}
+
+func newValidateError(msg, field string)*ValidateError{
+	return &ValidateError{
+		detail: "Validation error",
+		jsonDetails: struct{message, field string}{
+			msg, field,
+		},
+	}
+}
+
+func (ve *ValidateError) Error()string{
+	return ve.detail
+}
+
+func (ve *ValidateError) JsonFormat()map[string]any{
+	return  map[string]any{
+		"message":ve.jsonDetails.message,
+		"field":ve.jsonDetails.field,
+	}
+}
+
 var emailRx = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]*[a-zA-Z][a-zA-Z0-9]*$`)
 var urlRx = regexp.MustCompile(`^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$`)
 
@@ -183,7 +210,7 @@ func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect
 	default:
 		cons := strings.Split(s, "=")
 		if len(cons) != 2 {
-			return ErrValidation
+			return newUserError("syntax error for tag")
 		}
 		rule := cons[0]
 		cods := cons[1]
@@ -191,45 +218,45 @@ func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect
 		case "min":
 			min, err := strconv.ParseFloat(cods, 64)
 			if err != nil {
-				return ErrTypeError
+				return newUserError("min condition must be convertible to float64")
 			}
 			if kind == reflect.String {
 				val := len(v.String())
 				if val < int(min) {
-					return ErrValidation
+					return newValidateError(fmt.Sprintf("length of string must be more than %v",min),t.Name)
 				}
 			} else if slices.Contains(NumTypes, kind) {
 				if v.Convert(reflect.TypeFor[float64]()).Float() < min {
-					return ErrValidation
+					return newValidateError(fmt.Sprintf("value must be less than %v",min),t.Name)
 				}
 			} else {
-				return ErrTypeError
+				return newUserError("the field must be either string or a type of number")
 			}
 		case "max":
 			max, err := strconv.ParseFloat(cods, 64)
 			if err != nil {
-				return ErrTypeError
+				return newUserError("max condition must be convertible to float64")
 			}
 			if kind == reflect.String {
 				val := len(v.String())
 				if val > int(max) {
-					return ErrValidation
+					return newValidateError(fmt.Sprintf("length of string must be less than %v",max),t.Name)
 				}
 			} else if slices.Contains(NumTypes, kind) {
 				if v.Convert(reflect.TypeFor[float64]()).Float() > max {
-					return ErrValidation
+					return newValidateError(fmt.Sprintf("value must be more than %v",max),t.Name)
 				}
 			} else {
-				return ErrTypeError
+				return newUserError("the field must be either string or a type of number")
 			}
 		case "oneof":
 			got := fmt.Sprintf("%v", v.Interface())
 			allowed := strings.Split(cods, " ")
 			if !slices.Contains(allowed, got) {
-				return ErrValidation
+				return newValidateError(fmt.Sprintf("value must be either one of %v",strings.Join(allowed, ", ")),t.Name)
 			}
 		default:
-			return errors.New("idk")
+			return newUserError("unknown rule")
 		}
 	}
 	return nil
