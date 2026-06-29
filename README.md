@@ -2,7 +2,7 @@
 
 A backend server template which is made on top of net/http and is lightweight
 
-inspired heavily from echo
+inspired heavily from Echo
 
 ### Finished making !
 
@@ -95,4 +95,36 @@ if the user exceeds the bucket capacity then they are blocked from visiting temp
 Currently I haven't devised a solution to implement permanent blocking algorithms, maybe in the future I will work on that.  
 
 ### Validation
-TODO: gotta document this
+Works like the default struct validation from https://github.com/go-playground/validator  
+```go
+import "github.com/impl0x/mo/validator"
+
+type User struct{
+	Name string `validate:"required"`
+	Email string `validate:"required,email"`
+	Password string `validate:"required,min=8"`
+	Age int `validate:"min=18,max=120"` 
+}
+
+func main() {
+	badUser:=User{ // contains invalid invalid information
+		Email: "not_a_valid_email",
+		Password: "passw",
+		Age: 2,
+	}
+	errs:=validator.Validate(&badUser)
+	if errs!=nil{
+		for _,err:=range errs{
+			println(err.Error())
+		}
+	}
+}
+
+```
+has a few rules here
+- required: will fail if the field is zero value
+- email: matches against a regex
+- url: same as above
+- min: if string, length need to satisfy this, if number then need to be more than this
+- max: same logic as above
+- oneof: need to be one of the valid options
