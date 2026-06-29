@@ -29,6 +29,15 @@ const validatorTag = "validate"
 var emailRx = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]*[a-zA-Z][a-zA-Z0-9]*$`)
 var urlRx = regexp.MustCompile(`^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$`)
 
+// Validates structs using the standard validation tags
+//
+// examples: 
+// 
+// `validate:"required"`
+//
+// `validate:"required,email"`
+//
+// `validate:"required,min=3,max=10"`
 func Validate(target any) []ValidationError {
 	var errs []ValidationError
 	rv := reflect.ValueOf(target) // stores the value
@@ -112,11 +121,11 @@ func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect
 		if len(cons) != 2 {
 			return newUserError("syntax error for tag")
 		}
-		rule := cons[0]  // min
-		cods := cons[1]  // 2
+		rule := cons[0] // min
+		cods := cons[1] // 2
 		switch rule {
 		case "min":
-			min, err := strconv.ParseFloat(cods, 64)
+			min, err := strconv.ParseFloat(cods, 64)	// every number is convertible to float64
 			if err != nil {
 				return newUserError("min condition must be convertible to float64")
 			}
@@ -156,7 +165,7 @@ func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect
 				return newValidateError(fmt.Sprintf("value must be either one of %v", strings.Join(allowed, ", ")), t.Name)
 			}
 		default:
-			return newUserError("unknown rule")
+			return newUserError("unknown rule") // if no match
 		}
 	}
 	return nil

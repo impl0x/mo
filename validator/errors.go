@@ -7,6 +7,7 @@ type ValidationError interface {
 	JsonFormat() map[string]any
 }
 
+// syntax error in tag formatting
 type UserError struct {
 	detail string
 }
@@ -26,6 +27,8 @@ func newUserError(detail string) *UserError {
 	}
 }
 
+
+// required field not found error
 type MissingFieldError struct {
 	detail      string
 	jsonDetails struct {
@@ -49,6 +52,10 @@ func (mfe *MissingFieldError) JsonFormat() map[string]any {
 	}
 }
 
+// incorrect type for given tag requirements
+//
+// for example if email requirement has int type
+// this is an indirect user error
 type TypeError struct {
 	detail      string
 	jsonDetails struct {
@@ -80,6 +87,7 @@ func (te *TypeError) JsonFormat() map[string]any {
 	}
 }
 
+// failed to validate the field
 type ValidateError struct {
 	detail      string
 	jsonDetails struct {
