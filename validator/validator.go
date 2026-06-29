@@ -83,12 +83,12 @@ func Validate(target any) []ValidationError {
 	return errs
 }
 
-func matchRegexRule(rx *regexp.Regexp, v reflect.Value, kind reflect.Kind, fieldName string) ValidationError {
+func matchRegexRule(rx *regexp.Regexp, v reflect.Value, kind reflect.Kind, fieldName string, errorName string) ValidationError {
 	if kind != reflect.String {
 		return newTypeError(kind.String(), reflect.String.String(), fieldName)
 	}
 	if !rx.MatchString(v.String()) {
-		return newValidateError("Not a valid URL", fieldName)
+		return newValidateError("Not a valid "+errorName, fieldName)
 	}
 	return nil
 }
@@ -96,24 +96,24 @@ func matchRegexRule(rx *regexp.Regexp, v reflect.Value, kind reflect.Kind, field
 func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect.Kind) ValidationError {
 	switch s {
 	case "email":
-		err := matchRegexRule(emailRx, v, kind, t.Name)
+		err := matchRegexRule(emailRx, v, kind, t.Name, "email")
 		if err != nil {
 			return err
 		}
 	case "url":
-		err := matchRegexRule(urlRx, v, kind, t.Name)
+		err := matchRegexRule(urlRx, v, kind, t.Name, "url")
 		if err != nil {
 			return err
 		}
 	case "required":
 		return nil // we took care of it before looping, so we can skip now
 	default:
-		cons := strings.Split(s, "=")
+		cons := strings.Split(s, "=") // [min,2]
 		if len(cons) != 2 {
 			return newUserError("syntax error for tag")
 		}
-		rule := cons[0]
-		cods := cons[1]
+		rule := cons[0]  // min
+		cods := cons[1]  // 2
 		switch rule {
 		case "min":
 			min, err := strconv.ParseFloat(cods, 64)
