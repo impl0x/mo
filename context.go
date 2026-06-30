@@ -8,12 +8,36 @@ import (
 	"github.com/impl0x/mo/modules/logger"
 )
 
+type HeadersConfig struct {
+	Date           bool
+	content_type   bool
+	content_length bool
+}
+
+var DefaultHeadersConfig = HeadersConfig{true, true, true}
+
 type Response struct {
 	http.ResponseWriter
-	committed bool
+	committed              bool
+	defaultHeaders         map[string]string
+	RequestSpecificHeaders map[string]string
 }
 
 func (r *Response) WriteHeader(statusCode int) {
+	headers := r.Header()
+	if !DefaultHeadersConfig.content_length {
+		headers.Del("content-length")
+	} else if !DefaultHeadersConfig.content_type {
+		headers.Del("content-type")
+	} else if !DefaultHeadersConfig.Date {
+		headers.Del("date")
+	}
+	for k, v := range r.defaultHeaders {
+		headers.Set(k, v)
+	}
+	for k, v := range r.RequestSpecificHeaders {
+		headers.Set(k, v)
+	}
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.committed = true
 }
@@ -21,8 +45,9 @@ func (r *Response) WriteHeader(statusCode int) {
 type Context struct {
 	request  *http.Request
 	response *Response
-	Mo       *Mo            // original Mo instance
-	Store    map[string]any // stores context values
+	Headers  map[string]string // stores the headers for specific requests
+	Mo       *Mo               // original Mo instance
+	Store    map[string]any    // stores context values
 }
 
 func (c *Context) writeContentType(value string) {
@@ -35,7 +60,7 @@ func (c *Context) writeContentType(value string) {
 func (c *Context) Request() *http.Request {
 	return c.request
 }
-func (c *Context) Response() http.ResponseWriter {
+func (c *Context) Response() *Response {
 	return c.response
 }
 
@@ -59,7 +84,12 @@ func (c *Context) NoContent(code int) error {
 func (c *Context) Blob(code int, contentType string, b []byte) error {
 	c.writeContentType(contentType)
 	c.response.WriteHeader(code)
-	writeResp(c.response, b)
+	_, err := c.response.Write(b)
+	if err != nil {
+		if c.Mo.Config.LogErrors{
+			logger.Mo("Client disconnected! couldn't write response")
+		}
+	}
 	return nil
 }
 
@@ -74,13 +104,6 @@ func (c *Context) TEXT(code int, body string) error {
 	return c.Blob(code, MIMETextPlain, []byte(body))
 }
 
-func writeResp(resp http.ResponseWriter, b []byte) {
-	_, err := resp.Write(b)
-	if err != nil {
-		logger.Mo("Client disconnected! couldn't write response")
-		return
-	}
-}
 
 // ErrNonExistentKey is error that is returned when key does not exist
 var ErrNonExistentKey = errors.New("non existent key")
@@ -88,6 +111,18 @@ var ErrNonExistentKey = errors.New("non existent key")
 // ErrInvalidKeyType is error that is returned when the value is not castable to expected type.
 var ErrInvalidKeyType = errors.New("invalid key type")
 
+// Adds a value to the context storage
+func (c *Context) Add(key string, value any) {
+	c.Store[key] = value
+}
+
+// Gets a value from the context storage
+func (c *Context) Get(key string) (any, bool) {
+	v, ok := c.Store[key]
+	return v, ok
+}
+
+// Gets a value from the context storage (typed)
 func ContextGet[T any](c *Context, key string) (T, error) {
 	value, ok := c.Store[key]
 	if !ok {

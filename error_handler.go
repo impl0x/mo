@@ -20,7 +20,7 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			return
 		}
 		if c.response.committed {
-			if c.Mo.Config.PrintStartMsg{
+			if c.Mo.Config.LogErrors{
 				logger.Mo("Cannot write error, response already sent!", "err", err.Error())
 			}
 			return
