@@ -16,7 +16,7 @@ import (
 type Context struct {
 	request  *http.Request
 	response *Response
-	Headers  map[string]string // stores the headers for specific requests
+	ResponseHeaders  *HeadersManager // Sends headers with the response for this request
 	Mo       *Mo               // original Mo instance
 	Store    map[string]any    // stores context values
 }
@@ -107,7 +107,7 @@ func ContextGet[T any](c *Context, key string) (T, error) {
 	return typed, nil
 }
 
-// Binds the request headers to a struct
+// Binds the *request* headers to a struct
 //
 // must contain tag `header`
 //

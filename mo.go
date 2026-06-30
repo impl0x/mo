@@ -54,9 +54,11 @@ func (m *Mo) Start(addr string) error {
 }
 
 func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	responseHeaders:=DefaultHeadersManager()
 	c := &Context{
 		request:  r,
-		response: &Response{w, false, m.Headers, DefaultHeadersManager()},
+		response: &Response{w, false, m.Headers, responseHeaders},
+		ResponseHeaders: responseHeaders,
 		Mo:       m,
 	}
 	route, err := m.router.Find(r.URL.Path, r.Method)
