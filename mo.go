@@ -13,7 +13,7 @@ type Mo struct {
 	router           Router           // root router
 	HTTPErrorHandler HTTPErrorHandler // Error handler must also handle nil, because every handler return is at the end handed over to the errorHandler even if its a nil
 	Middlewares      []Middleware
-	Headers          map[string]string // default headers
+	Headers          *HeadersManager // default headers
 	Config           *MoConfig
 }
 
@@ -32,16 +32,16 @@ func New() *Mo {
 	return &Mo{
 		router:           NewSlowRouter(),
 		HTTPErrorHandler: DefaultHTTPErrorHandler(false),
-		Headers:          map[string]string{},
+		Headers:          DefaultHeadersManager(),
 		Config:           DefaultConfig(),
 	}
 }
 
-func NewWithConfig(router Router, errorHandler HTTPErrorHandler, config *MoConfig) *Mo {
+func NewWithConfig(router Router, header *HeadersManager, errorHandler HTTPErrorHandler, config *MoConfig) *Mo {
 	return &Mo{
 		router:           router,
 		HTTPErrorHandler: errorHandler,
-		Headers:          map[string]string{},
+		Headers:          header,
 		Config:           config,
 	}
 }
@@ -56,7 +56,7 @@ func (m *Mo) Start(addr string) error {
 func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := &Context{
 		request:  r,
-		response: &Response{w, false, m.Headers, map[string]string{}},
+		response: &Response{w, false, m.Headers, DefaultHeadersManager()},
 		Mo:       m,
 	}
 	route, err := m.router.Find(r.URL.Path, r.Method)

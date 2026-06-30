@@ -4,43 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"reflect"
 
 	"github.com/impl0x/mo/modules/logger"
 )
 
-type HeadersConfig struct {
-	Date           bool
-	content_type   bool
-	content_length bool
-}
 
-var DefaultHeadersConfig = HeadersConfig{true, true, true}
 
-type Response struct {
-	http.ResponseWriter
-	committed              bool
-	defaultHeaders         map[string]string
-	RequestSpecificHeaders map[string]string
-}
 
-func (r *Response) WriteHeader(statusCode int) {
-	headers := r.Header()
-	if !DefaultHeadersConfig.content_length {
-		headers.Del("content-length")
-	} else if !DefaultHeadersConfig.content_type {
-		headers.Del("content-type")
-	} else if !DefaultHeadersConfig.Date {
-		headers.Del("date")
-	}
-	for k, v := range r.defaultHeaders {
-		headers.Set(k, v)
-	}
-	for k, v := range r.RequestSpecificHeaders {
-		headers.Set(k, v)
-	}
-	r.ResponseWriter.WriteHeader(statusCode)
-	r.committed = true
-}
 
 type Context struct {
 	request  *http.Request
@@ -86,7 +57,7 @@ func (c *Context) Blob(code int, contentType string, b []byte) error {
 	c.response.WriteHeader(code)
 	_, err := c.response.Write(b)
 	if err != nil {
-		if c.Mo.Config.LogErrors{
+		if c.Mo.Config.LogErrors {
 			logger.Mo("Client disconnected! couldn't write response")
 		}
 	}
@@ -103,7 +74,6 @@ func (c *Context) JSON(code int, target any) error {
 func (c *Context) TEXT(code int, body string) error {
 	return c.Blob(code, MIMETextPlain, []byte(body))
 }
-
 
 // ErrNonExistentKey is error that is returned when key does not exist
 var ErrNonExistentKey = errors.New("non existent key")
@@ -135,4 +105,51 @@ func ContextGet[T any](c *Context, key string) (T, error) {
 		return zero, ErrInvalidKeyType
 	}
 	return typed, nil
+}
+
+// Binds the request headers to a struct
+//
+// must contain tag `header`
+//
+// example: 
+// 	token string `header:"authorization"`
+//
+// fields of the struct MUST be strings!
+func (c *Context) BindHeaders(target any) {
+
+	headers := c.request.Header
+
+	rv := reflect.ValueOf(target)
+	if rv.Kind() == reflect.Pointer {
+		rv = rv.Elem()
+	}
+	rt := rv.Type()
+	if rv.Kind() != reflect.Struct {
+		if c.Mo.Config.LogErrors {
+			logger.Mo("Cannot bind headers to a non struct object")
+		}
+		return
+	}
+	for i := range rv.NumField() {
+		v := rv.Field(i)
+		t := rt.Field(i)
+		if !t.IsExported() {
+			continue
+		}
+		if v.Kind() != reflect.String {
+			if c.Mo.Config.LogErrors {
+				logger.Mo("Header binding variables must be strictly string")
+			}
+			continue // headers values must be strings strictly
+		}
+		tag, ok := t.Tag.Lookup("header")
+		if !ok {
+			continue
+		}
+		value := headers.Get(tag)
+		if value == "" {
+			continue
+		}
+		v.SetString(value)
+	}
 }
