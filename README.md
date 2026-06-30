@@ -128,3 +128,22 @@ has a few rules here
 - min: if string, length need to satisfy this, if number then need to be more than this
 - max: same logic as above
 - oneof: need to be one of the valid options
+### Header management  
+#### *Response headers* 
+#### Default headers:  
+These get set on every request globally.  
+Example:  
+```go
+m := mo.New()
+m.Headers["x-test"] = "test"
+```
+#### Request specific headers:  
+These get set on requests if you set them using context
+```go
+func ExampleHandler(c *mo.Context) error {
+	c.Headers["x-test"] = "test"
+}
+```
+Both are of the type `map[string]string`. 
+
+*Request headers*
