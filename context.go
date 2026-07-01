@@ -7,18 +7,15 @@ import (
 	"reflect"
 
 	"github.com/impl0x/mo/modules/logger"
+	"github.com/impl0x/mo/validator"
 )
 
-
-
-
-
 type Context struct {
-	request  *http.Request
-	response *Response
-	ResponseHeaders  *HeadersManager // Sends headers with the response for this request
-	Mo       *Mo               // original Mo instance
-	Store    map[string]any    // stores context values
+	request         *http.Request
+	response        *Response
+	ResponseHeaders *HeadersManager // Sends headers with the response for this request
+	Mo              *Mo             // original Mo instance
+	Store           map[string]any  // stores context values
 }
 
 func (c *Context) writeContentType(value string) {
@@ -111,8 +108,9 @@ func ContextGet[T any](c *Context, key string) (T, error) {
 //
 // must contain tag `header`
 //
-// example: 
-// 	token string `header:"authorization"`
+// example:
+//
+//	token string `header:"authorization"`
 //
 // fields of the struct MUST be strings!
 func (c *Context) BindHeaders(target any) {
@@ -152,4 +150,24 @@ func (c *Context) BindHeaders(target any) {
 		}
 		v.SetString(value)
 	}
+}
+
+// Decodes the request body into a struct
+func (c *Context) DecodeBody(target any) error {
+	return json.NewDecoder(c.request.Body).Decode(target)
+}
+
+// Decodes the request body into a struct and validates that
+//
+// The body must be json
+func (c *Context) DecodeAndValidateBody(target any) error {
+	err := json.NewDecoder(c.request.Body).Decode(target)
+	if err != nil {
+		return err
+	}
+	validationResult := validator.Validate(target)
+	if validationResult.Errors != nil {
+		return validationResult
+	}
+	return nil
 }
