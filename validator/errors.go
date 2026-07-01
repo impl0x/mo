@@ -16,12 +16,12 @@ func (gve *GroupedValidationError) Error() string {
 	return "Validation error"
 }
 
-func (gve *GroupedValidationError) Append(elems ...ValidationError){
+func (gve *GroupedValidationError) Append(elems ...ValidationError) {
 	gve.Errors = append(gve.Errors, elems...)
 }
 
 func (gve *GroupedValidationError) JsonFormat() []map[string]any {
-	jsonList := make([]map[string]any,0,len(gve.Errors))
+	jsonList := make([]map[string]any, 0, len(gve.Errors))
 	for _, err := range gve.Errors {
 		jsonList = append(jsonList, err.JsonFormat())
 	}

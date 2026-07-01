@@ -58,7 +58,7 @@ const (
 	HeaderXFrameOptions                   = "X-Frame-Options"
 	HeaderContentSecurityPolicy           = "Content-Security-Policy"
 	HeaderContentSecurityPolicyReportOnly = "Content-Security-Policy-Report-Only"
-	HeaderXCSRFToken                      = "X-CSRF-Token" 
+	HeaderXCSRFToken                      = "X-CSRF-Token"
 	HeaderReferrerPolicy                  = "Referrer-Policy"
 
 	// HeaderSecFetchSite fetch metadata request header indicates the relationship between a request initiator's

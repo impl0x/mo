@@ -98,8 +98,7 @@ func (h *HeadersManager) Bind(target any) error {
 	return nil
 }
 
-
-func (h *HeadersManager) writeHeaders(headers http.Header){
+func (h *HeadersManager) writeHeaders(headers http.Header) {
 	for k, v := range h.headers {
 		headers.Set(k, v)
 	}
