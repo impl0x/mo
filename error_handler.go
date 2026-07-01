@@ -1,6 +1,8 @@
 package mo
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/impl0x/mo/modules/logger"
@@ -35,8 +37,19 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 				"message": "Validation error",
 				"errors":  e.JsonFormat(),
 			})
+		case *json.SyntaxError:
+			c.JSON(http.StatusUnprocessableEntity, map[string]any{
+				"code":    http.StatusUnprocessableEntity,
+				"message": fmt.Sprintf("JSON syntax error at offset %d", e.Offset),
+			})
+		case *json.UnmarshalTypeError:
+			c.JSON(http.StatusExpectationFailed, map[string]any{
+				"code":    http.StatusExpectationFailed,
+				"message": fmt.Sprintf("Wrong type used for field %s", e.Field),
+			})
 		default:
 			resp := map[string]any{
+				"code":    http.StatusInternalServerError,
 				"message": http.StatusText(http.StatusInternalServerError),
 			}
 			if exposeError {
