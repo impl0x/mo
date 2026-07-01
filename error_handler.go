@@ -48,12 +48,20 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 				"message": fmt.Sprintf("Wrong type used for field %s", e.Field),
 			})
 		default:
+			if e.Error() == "EOF" { // rare case because json parsing returns a errorString of EOF when a body is empty.
+				c.JSON(http.StatusUnprocessableEntity, map[string]any{
+					"code":    http.StatusUnprocessableEntity,
+					"message": "EOF",
+				})
+				return
+			}
 			resp := map[string]any{
 				"code":    http.StatusInternalServerError,
 				"message": http.StatusText(http.StatusInternalServerError),
 			}
 			if exposeError {
 				resp["error"] = e.Error()
+				logger.Mo("Internal error: "+e.Error(), "errorType", fmt.Sprintf("%T", e))
 			}
 			c.JSON(http.StatusInternalServerError, resp)
 		}
