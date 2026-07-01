@@ -54,7 +54,7 @@ type ValidateError struct {
 	Field   string
 }
 
-func newValidateError(msg, field string) *ValidateError {
+func NewValidateError(msg, field string) *ValidateError {
 	return &ValidateError{
 		msg, field,
 	}

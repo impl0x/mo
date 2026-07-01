@@ -73,7 +73,7 @@ func Validate(target any) *GroupedValidationError {
 
 		if ok := slices.Contains(requirements, "required"); ok {
 			if v.IsZero() { // if theres a required tag and field is initialized to its zero value
-				gve.Append(newValidateError("Required field not found", t.Name)) // we store a missing field error
+				gve.Append(NewValidateError("Required field not found", t.Name)) // we store a missing field error
 				continue
 			}
 		} else {
@@ -98,15 +98,15 @@ func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect
 		if kind != reflect.String {
 			return newUserError("Cannot validate \"email\" rule against a " + kind.String())
 		}
-		if emailRx.MatchString(v.String()) {
-			return newValidateError("Not a valid email", t.Name)
+		if !emailRx.MatchString(v.String()) {
+			return NewValidateError("Not a valid email", t.Name)
 		}
 	case "url":
 		if kind != reflect.String {
 			return newUserError("Cannot validate \"url\" rule against a " + kind.String())
 		}
-		if urlRx.MatchString(v.String()) {
-			return newValidateError("Not a valid URL", t.Name)
+		if !urlRx.MatchString(v.String()) {
+			return NewValidateError("Not a valid URL", t.Name)
 		}
 	case "required":
 		return nil // we took care of it before looping, so we can skip now
@@ -126,11 +126,11 @@ func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect
 			if kind == reflect.String {
 				val := len(v.String())
 				if val < int(min) {
-					return newValidateError(fmt.Sprintf("Length of string must be more than %v", min), t.Name)
+					return NewValidateError(fmt.Sprintf("Length of string must be more than %v", min), t.Name)
 				}
 			} else if slices.Contains(NumTypes, kind) {
 				if v.Convert(reflect.TypeFor[float64]()).Float() < min {
-					return newValidateError(fmt.Sprintf("Value must be less than %v", min), t.Name)
+					return NewValidateError(fmt.Sprintf("Value must be less than %v", min), t.Name)
 				}
 			} else {
 				return newUserError("The field must be either string or a type of number")
@@ -143,11 +143,11 @@ func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect
 			if kind == reflect.String {
 				val := len(v.String())
 				if val > int(max) {
-					return newValidateError(fmt.Sprintf("Length of string must be less than %v", max), t.Name)
+					return NewValidateError(fmt.Sprintf("Length of string must be less than %v", max), t.Name)
 				}
 			} else if slices.Contains(NumTypes, kind) {
 				if v.Convert(reflect.TypeFor[float64]()).Float() > max {
-					return newValidateError(fmt.Sprintf("Value must be more than %v", max), t.Name)
+					return NewValidateError(fmt.Sprintf("Value must be more than %v", max), t.Name)
 				}
 			} else {
 				return newUserError("The field must be either string or a type of number")
@@ -156,7 +156,7 @@ func validateRule(s string, v reflect.Value, t reflect.StructField, kind reflect
 			got := fmt.Sprintf("%v", v.Interface())
 			allowed := strings.Split(cods, " ")
 			if !slices.Contains(allowed, got) {
-				return newValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(allowed, ", ")), t.Name)
+				return NewValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(allowed, ", ")), t.Name)
 			}
 		default:
 			return newUserError("Unknown rule") // if no match
