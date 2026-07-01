@@ -13,7 +13,7 @@ type Mo struct {
 	router           Router           // root router
 	HTTPErrorHandler HTTPErrorHandler // Error handler must also handle nil, because every handler return is at the end handed over to the errorHandler even if its a nil
 	Middlewares      []Middleware
-	Headers          *HeadersManager // default headers
+	Headers          *HeadersManager // Headers, sent in every request
 	Config           *MoConfig
 }
 
