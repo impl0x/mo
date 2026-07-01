@@ -38,7 +38,7 @@ var urlRx = regexp.MustCompile(`^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::
 // `validate:"required,email"`
 //
 // `validate:"required,min=3,max=10"`
-func Validate(target any) GroupedValidationError {
+func Validate(target any) *GroupedValidationError {
 	gve := NewGroupedValidationError()
 	rv := reflect.ValueOf(target)     // stores the value
 	rt := reflect.TypeOf(target)      // stores the type
@@ -47,7 +47,7 @@ func Validate(target any) GroupedValidationError {
 		rt = rt.Elem()
 	}
 	if rt.Kind() != reflect.Struct {
-		gve.Errors = append(gve.Errors, newUserError("Not a struct"))
+		gve.Append(newUserError("Not a struct"))
 		return gve // if not struct we immediately return an error
 	}
 	for i := range rv.NumField() { // loops over all the fields of the struct
@@ -58,7 +58,7 @@ func Validate(target any) GroupedValidationError {
 			v = v.Elem()
 		}
 		if kind == reflect.Struct { // recursively validates any nested structs
-			gve.Errors = append(gve.Errors, Validate(v.Interface()).Errors...)
+			gve.Append(Validate(v.Interface()).Errors...)
 			continue
 		}
 		if !t.IsExported() {
@@ -72,8 +72,8 @@ func Validate(target any) GroupedValidationError {
 		requirements := strings.Split(tag, ",") // ex: required,min=2,max=8. we split the requirements/rules
 
 		if ok := slices.Contains(requirements, "required"); ok {
-			if v.IsZero() { // if theres a required tag and 54 field is initialized to its zero value
-				gve.Errors = append(gve.Errors, newValidateError(fmt.Sprintf("Field %v is required", t.Name), t.Name)) // we store a missing field error
+			if v.IsZero() { // if theres a required tag and field is initialized to its zero value
+				gve.Append(newValidateError("Required field not found", t.Name)) // we store a missing field error
 				continue
 			}
 		} else {
@@ -85,7 +85,7 @@ func Validate(target any) GroupedValidationError {
 		for _, s := range requirements {
 			err := validateRule(s, v, t, kind)
 			if err != nil {
-				gve.Errors = append(gve.Errors, err)
+				gve.Append(err)
 			}
 		}
 	}
