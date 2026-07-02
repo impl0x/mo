@@ -39,7 +39,7 @@ import (
 func main() {
 	m := mo.New()
 	// m.Use() takes a parameter of type mo.MiddlewareFunc
-	m.Use(middlewares.Logger) // <--
+	m.Use(middlewares.Logger()) // <--
 	m.GET("/", func(c *mo.Context) error { return nil })
 	m.Start(":8080")
 }
