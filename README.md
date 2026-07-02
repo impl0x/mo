@@ -135,15 +135,40 @@ These get set on every request globally.
 Example:  
 ```go
 m := mo.New()
-m.Headers["x-test"] = "test"
+m.Headers.Add("x-test", "test")
 ```
 #### Request specific headers:  
 These get set on requests if you set them using context
 ```go
 func ExampleHandler(c *mo.Context) error {
-	c.Headers["x-test"] = "test"
+	c.ResponseHeaders.Add("x-test","test")
 }
 ```
 Both are of the type `map[string]string`. 
 
-*Request headers*
+To bind headers from a struct use the .bind() method on headers object.  
+for example,
+```go
+type DefaultHeaders struct {
+	XtraceId   string `header:"x-trace-id"`
+	XpoweredBy string `header:"x-powered-by"`
+}
+
+m := mo.New()
+headers := DefaultHeaders{
+	"abcd",
+	"mo",
+}
+m.Headers.Bind(&headers)
+```  
+The struct that you are binding must contain the `header` tag.  
+
+### Request body parsing  
+Just call the `c.Bind` method and pass a struct with json tags
+```go
+func handler(c *mo.Context) error {
+	c.DecodeBody(target) // just decodes
+	c.DecodeBodyAndValidate(target) // decodes and validates the body
+}
+```
+you can also validate it at the same place using the other  function.
