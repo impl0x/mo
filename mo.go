@@ -6,7 +6,7 @@ import (
 	"github.com/impl0x/mo/modules/logger"
 )
 
-type HandlerFunc func(c *Context) error
+type HandlerFunc func(*Context) error
 type Middleware func(HandlerFunc) HandlerFunc
 
 type Mo struct {
