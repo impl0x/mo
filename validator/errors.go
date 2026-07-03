@@ -6,6 +6,7 @@ var ReturnUserErrors bool     // change to true if you want validation User erro
 var LogUserErrors bool = true // logs the user errors.
 
 type ValidationError interface {
+	Error() string
 	JsonFormat() map[string]any
 }
 

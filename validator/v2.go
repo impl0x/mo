@@ -8,6 +8,23 @@ import (
 	"strings"
 )
 
+var NumTypes = []reflect.Kind{
+	reflect.Int8,
+	reflect.Int16,
+	reflect.Int32,
+	reflect.Int64,
+	reflect.Int,
+	reflect.Uint8,
+	reflect.Uint16,
+	reflect.Uint32,
+	reflect.Uint64,
+	reflect.Uint,
+	reflect.Float32,
+	reflect.Float64,
+}
+
+const validatorTag = "validate"
+
 type validator struct {
 	target any
 	err    *GroupedValidationError
@@ -54,7 +71,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(Validate_(vd.f.v.Interface()).Errors...) // TODO: make a nested error
+			vd.err.Append(Validate(vd.f.v.Interface()).Errors...) // TODO: make a nested error
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
@@ -178,18 +195,18 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 func (vd *validator) handleNumericComparison(rule string, value float64, ruleValue float64, errorValueName string) ValidationError {
 	switch rule {
 	case min_, gte:
-		if value <= ruleValue {
+		if value < ruleValue {
 			return NewValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), vd.f.t.Name)
 		}
 	case max_, lte:
-		if value >= ruleValue {
+		if value > ruleValue {
 			return NewValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), vd.f.t.Name)
 		}
 	}
 	return nil
 }
 
-func Validate_(target any) *GroupedValidationError {
+func Validate(target any) *GroupedValidationError {
 	v := &validator{
 		target: target,
 		err:    NewGroupedValidationError(),
