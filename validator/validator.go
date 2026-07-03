@@ -3,7 +3,6 @@ package validator
 import (
 	"fmt"
 	"reflect"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -26,8 +25,6 @@ var NumTypes = []reflect.Kind{
 
 const validatorTag = "validate"
 
-var emailRx = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]*[a-zA-Z][a-zA-Z0-9]*$`)
-var urlRx = regexp.MustCompile(`^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$`)
 
 // Validates structs using the standard validation tags
 //
