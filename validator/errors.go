@@ -1,17 +1,12 @@
 package validator
 
-import "reflect"
+import "github.com/impl0x/mo/modules/logger"
 
-type ValidationErrors []FieldError
+var ReturnUserErrors bool     // change to true if you want validation User errors to be returned in the [GroupedValidationError].
+var LogUserErrors bool = true // logs the user errors.
 
-type FieldError interface {
-	Tag() string
-	Field() string
-	Value() any
-	Param() string
-	Kind() reflect.Kind
-	Type() reflect.Type
-	Error() string
+type ValidationError interface {
+	JsonFormat() map[string]any
 }
 
 type fieldError struct{
