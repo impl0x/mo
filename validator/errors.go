@@ -1,5 +1,10 @@
 package validator
 
+import "github.com/impl0x/mo/modules/logger"
+
+var ReturnUserErrors bool     // change to true if you want validation User errors to be returned in the [GroupedValidationError].
+var LogUserErrors bool = true // logs the user errors.
+
 type ValidationError interface {
 	JsonFormat() map[string]any
 }
@@ -23,6 +28,14 @@ func (gve *GroupedValidationError) Append(elems ...ValidationError) {
 func (gve *GroupedValidationError) JsonFormat() []map[string]any {
 	jsonList := make([]map[string]any, 0, len(gve.Errors))
 	for _, err := range gve.Errors {
+		if e, ok := err.(*UserError); ok {
+			if LogUserErrors {
+				logger.Validator(e.Error())
+			}
+			if !ReturnUserErrors {
+				continue
+			}
+		}
 		jsonList = append(jsonList, err.JsonFormat())
 	}
 	return jsonList
@@ -39,12 +52,12 @@ func newUserError(detail string) *UserError {
 	}
 }
 
-func (de *UserError) Error() string {
-	return de.detail
+func (ue *UserError) Error() string {
+	return ue.detail
 }
-func (de *UserError) JsonFormat() map[string]any {
+func (ue *UserError) JsonFormat() map[string]any {
 	return map[string]any{
-		"message": de.detail,
+		"message": ue.detail,
 	}
 }
 
