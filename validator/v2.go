@@ -1,20 +1,11 @@
 package validator
 
 import (
+	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
-)
-
-type validatorRule = string
-
-const (
-	required validatorRule = "required"
-	email    validatorRule = "email"
-	url      validatorRule = "url"
-	uuid     validatorRule = "uuid"
-	ipv4     validatorRule = "ipv4"
-	ipv6     validatorRule = "ipv6"
 )
 
 type validator struct {
@@ -23,6 +14,8 @@ type validator struct {
 
 	rv reflect.Value
 	rt reflect.Type
+
+	f field
 }
 
 type field struct {
@@ -33,51 +26,59 @@ type field struct {
 	rules []string
 }
 
-func (vd *validator) init() {
+func (vd *validator) init() ValidationError {
 	vd.rv = reflect.ValueOf(vd.target)
 	if vd.rv.Kind() == reflect.Pointer { // if v is a pointer then we dereference it
 		vd.rv = vd.rv.Elem()
 	}
 	vd.rt = vd.rv.Type()
 	if vd.rt.Kind() != reflect.Struct {
-		vd.err.Append(newUserError("Not a struct")) // if not struct we immediately return an error
+		return newUserError("Not a struct") // if not struct we immediately return an error
 	}
+	return nil
 }
 
 func (vd *validator) loop() {
+FieldLoop:
 	for i := range vd.rv.NumField() {
-		f := field{
+		vd.f = field{
 			v: vd.rv.Field(i),
 			t: vd.rt.Field(i),
 		}
-		f.kind = f.v.Kind()
+		vd.f.kind = vd.f.v.Kind()
 
-		if f.kind == reflect.Pointer {
-			f.v = f.v.Elem()
+		if vd.f.kind == reflect.Pointer {
+			vd.f.v = vd.f.v.Elem()
 		}
-		if f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(Validate(f.v.Interface()).Errors...)
-			continue
-		}
-		if !f.t.IsExported() {
+		if !vd.f.t.IsExported() {
 			continue // if field isn't exported we skip it
 		}
-		tag, ok := f.t.Tag.Lookup(validatorTag)
+		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
+			vd.err.Append(Validate_(vd.f.v.Interface()).Errors...) // TODO: make a nested error
+			continue
+		}
+		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
 		if !ok {
 			continue // if our tag isn't present we skip the field
 		}
 
-		f.rules = strings.Split(tag, ",")
+		vd.f.rules = strings.Split(tag, ",") // "required,email"->["required","email"]
 
-		if f.v.IsZero() { // if zero we skip
-			if ok := slices.Contains(f.rules, required); ok { // if required we add a error
-				vd.err.Append(NewValidateError("Required field not found", f.t.Name))
+		// checks for field [optional] and [required]
+		if vd.f.v.IsZero() {
+			for _, ru := range vd.f.rules {
+				if ru == required { // i.e. if zero and required we append a error
+					vd.err.Append(NewValidateError("Required field not found", vd.f.t.Name))
+					continue FieldLoop // we continue the outer loop
+				}
+				if ru == optional {
+					continue FieldLoop // its optional so we can continue without checks
+				}
 			}
-			continue
 		}
 
-		for _, s := range f.rules {
-			err := f.handleRules(s)
+		for _, rule := range vd.f.rules { // loop over every rule and pass it to the handler
+			err := vd.handleNonEqRules(rule)
 			if err != nil {
 				vd.err.Append(err)
 			}
@@ -86,8 +87,106 @@ func (vd *validator) loop() {
 	}
 }
 
-func (f *field) handleRules(s string) *ValidateError {
-	// TODO: handle the different rules of validation like email,url,etc. using methods defined on field struct itself.
+// handles the rules without a equal-to sign, required, email, etc.
+func (vd *validator) handleNonEqRules(rule string) ValidationError {
+	var err ValidationError
+	v := vd.f.v.Interface()
+	switch rule { // written a theory at the end of this function to make this cleaner
+	case required: // we don't deal with required
+	case email:
+		err = emailRx.validate(vd.f, v)
+	case e164:
+		err = e164Rx.validate(vd.f, v)
+	case url:
+		err = urlRx.validate(vd.f, v)
+	case uuid:
+		err = uuidRx.validate(vd.f, v)
+	case alpha:
+		err = alphaRx.validate(vd.f, v)
+	case alphanum:
+		err = alphanumRx.validate(vd.f, v)
+	case numeric:
+		err = numericRx.validate(vd.f, v)
+	case ipv4:
+		err = ipv4Rx.validate(vd.f, v)
+	case ipv6:
+		err = ipv6Rx.validate(vd.f, v)
+	default: // eqRules here, min,max,lte,gte,etc.
+		err = vd.handleEqRules(rule) // rule: min=2
+	}
+	return err
+}
+
+// there is technically a way to make the above function cleaner and shorter.
+// that is by not using a big switch statement and repeating myself with the function calls.
+// I could make separate types for nonEq and eq and then loop against every possible rule
+// and call the validate function just once. that would work but that would make it more messier
+// according to my option that is. So I will let this one slide.
+// It is a bit of repeating but it keeps things separated.
+
+func (vd *validator) handleEqRules(eqRule string) ValidationError {
+	var isCollection = vd.f.kind == reflect.Slice || vd.f.kind == reflect.Array || vd.f.kind == reflect.Map || vd.f.kind == reflect.String
+	split := strings.Split(eqRule, "=")
+	if len(split) != 2 {
+		return newUserError("Syntax error for tag")
+	}
+	rule := split[0]
+	ruleValueStr := split[1]
+	var err ValidationError
+	switch rule {
+	case min_, max_, gte, lte:
+		ruleValue, e := strconv.ParseFloat(ruleValueStr, 64)
+		if e != nil {
+			return newUserError(fmt.Sprintf("Condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
+		}
+		// type checking for the field value here
+		if slices.Contains(NumTypes, vd.f.kind) { // checking numTypes, int,uint,float,etc.
+			err = vd.handleNumericComparison(rule, vd.f.v.Convert(reflect.TypeFor[float64]()).Float(), ruleValue, "Field value")
+		} else if isCollection { // array, slice, string
+			err = vd.handleNumericComparison(rule, float64(vd.f.v.Len()), ruleValue, vd.f.kind.String()+" length")
+		} else { // unsupported
+			err = newUserError(fmt.Sprintf("The field must be either string, collection or numeric. field: %v", vd.f.t.Name))
+		}
+	case len_:
+		ruleValue, e := strconv.Atoi(ruleValueStr)
+		if e != nil {
+			return newUserError(fmt.Sprintf("len tag value must be int. field: %v", vd.f.t.Name))
+		}
+		if isCollection {
+			if vd.f.v.Len() != ruleValue {
+				err = NewValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, vd.f.t.Name)
+			}
+		} else {
+			err = newUserError(fmt.Sprintf("The field must be either string or collection. field: %v", vd.f.t.Name))
+		}
+	case oneof:
+		if vd.f.kind == reflect.String {
+			ruleValues := strings.Split(ruleValueStr, " ")
+			if !slices.Contains(ruleValues, vd.f.v.String()) {
+				err = NewValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), vd.f.t.Name)
+			}
+		} else {
+			err = newUserError("oneof tag must only be used on a string field")
+		}
+
+	default: // do oneof and len
+		err = newUserError(fmt.Sprintf("Syntax error: Invalid tag value for field %v, rule: %v", vd.f.t.Name, rule))
+	}
+	return err
+}
+
+func (vd *validator) handleNumericComparison(rule string, value float64, ruleValue float64, errorValueName string) ValidationError {
+	switch rule {
+	case min_, gte:
+		if value <= ruleValue {
+			return NewValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), vd.f.t.Name)
+		}
+	case max_, lte:
+		if value >= ruleValue {
+			return NewValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), vd.f.t.Name)
+		}
+	}
+	return nil
 }
 
 func Validate_(target any) *GroupedValidationError {
@@ -95,7 +194,11 @@ func Validate_(target any) *GroupedValidationError {
 		target: target,
 		err:    NewGroupedValidationError(),
 	}
-	v.init()
+	err := v.init()
+	if err != nil {
+		v.err.Append(err)
+		return v.err
+	}
 	v.loop()
 	return v.err
 
