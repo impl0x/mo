@@ -11,6 +11,15 @@ func Mo(v ...string) {
 	log(mo, v)
 }
 
+var validator = Level{
+	Color: Colors["light_blue"],
+	Label: "Validator",
+}
+
+func Validator(v ...string){
+	log(validator,v)
+}
+
 var get = Level{
 	Color: Colors["cyan"],
 	Label: "GET",
