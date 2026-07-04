@@ -70,12 +70,12 @@ var ipv6Rx = regexRule{
 	regexp.MustCompile(`^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$`),
 }
 
-func (r *regexRule) validate(f field, v any) ValidationError {
-	if f.kind != reflect.String {
-		return newUserError("Cannot validate \"email\" rule against a " + f.kind.String())
+func (r *regexRule) validate(vd *validator, v any) error {
+	if vd.f.kind != reflect.String {
+		return newInvalidValidationError("Cannot validate \"email\" rule against a " + vd.f.kind.String())
 	}
 	if !r.regEx.MatchString(v.(string)) {
-		return NewValidateError("Not a valid "+r.name, f.t.Name, "", string(f.t.Tag), f.v.Interface(), f.v.String())
+		return NewFieldError("Not a valid "+r.name, vd.rt.Name(), "", &vd.f)
 	}
 	return nil
 }
