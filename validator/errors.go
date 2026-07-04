@@ -9,51 +9,77 @@ type ValidationError interface {
 	JsonFormat() map[string]any
 }
 
-type fieldError struct{
-	errorMessage string
-	parent string
-	param string
-	f *field
+type GroupedValidationError struct {
+	Errors []ValidationError
 }
 
-func NewFieldError(errorMessage, parent, param string, field *field) FieldError {
-	return &fieldError{
-		errorMessage,parent,param,field,
+func NewGroupedValidationError() *GroupedValidationError {
+	return &GroupedValidationError{}
+}
+
+func (gve *GroupedValidationError) Error() string {
+	return "Validation error"
+}
+
+func (gve *GroupedValidationError) Append(elems ...ValidationError) {
+	gve.Errors = append(gve.Errors, elems...)
+}
+
+func (gve *GroupedValidationError) JsonFormat() []map[string]any {
+	jsonList := make([]map[string]any, 0, len(gve.Errors))
+	for _, err := range gve.Errors {
+		if e, ok := err.(*UserError); ok {
+			if LogUserErrors {
+				logger.Validator(e.Error())
+			}
+			if !ReturnUserErrors {
+				continue
+			}
+		}
+		jsonList = append(jsonList, err.JsonFormat())
+	}
+	return jsonList
+}
+
+// syntax error in tag formatting
+type UserError struct {
+	detail string
+}
+
+func newUserError(detail string) *UserError {
+	return &UserError{
+		detail: detail,
 	}
 }
 
-func (fe *fieldError) Tag()string {
-	return string(fe.f.t.Tag)
+func (ue *UserError) Error() string {
+	return ue.detail
 }
-func (fe *fieldError) Field()string {
-	return fe.parent+fe.f.t.Name
-}
-func (fe *fieldError) Value()any {
-	return fe.f.v.Interface()
-}
-func (fe *fieldError) Param()string {
-	return fe.param
-}
-func (fe *fieldError) Kind()reflect.Kind {
-	return fe.f.kind
-}
-func (fe *fieldError) Type()reflect.Type {
-	return fe.f.t.Type
-}
-func (fe *fieldError) Error()string {
-	return fe.errorMessage
+func (ue *UserError) JsonFormat() map[string]any {
+	return map[string]any{
+		"message": ue.detail,
+	}
 }
 
-type InvalidValidationError struct{
+// failed to validate the field
+type ValidateError struct {
 	Message string
+	Field   string
 }
 
-func newInvalidValidationError(message string) InvalidValidationError {
-	return InvalidValidationError{
-		message,
+func NewValidateError(msg, field string) *ValidateError {
+	return &ValidateError{
+		msg, field,
 	}
 }
 
-func (ive InvalidValidationError) Error()string {
-	return ive.Message
+func (ve *ValidateError) Error() string {
+	return ve.Message
+}
+
+func (ve *ValidateError) JsonFormat() map[string]any {
+	return map[string]any{
+		"message": ve.Message,
+		"field":   ve.Field,
+	}
 }

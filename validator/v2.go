@@ -8,9 +8,26 @@ import (
 	"strings"
 )
 
+var NumTypes = []reflect.Kind{
+	reflect.Int8,
+	reflect.Int16,
+	reflect.Int32,
+	reflect.Int64,
+	reflect.Int,
+	reflect.Uint8,
+	reflect.Uint16,
+	reflect.Uint32,
+	reflect.Uint64,
+	reflect.Uint,
+	reflect.Float32,
+	reflect.Float64,
+}
+
+const validatorTag = "validate"
+
 type validator struct {
 	target any
-	err    ValidationErrors
+	err    *GroupedValidationError
 
 	rv reflect.Value
 	rt reflect.Type
@@ -26,14 +43,14 @@ type field struct {
 	rules []string
 }
 
-func (vd *validator) init() InvalidValidationError {
+func (vd *validator) init() ValidationError {
 	vd.rv = reflect.ValueOf(vd.target)
 	if vd.rv.Kind() == reflect.Pointer { // if v is a pointer then we dereference it
 		vd.rv = vd.rv.Elem()
 	}
 	vd.rt = vd.rv.Type()
 	if vd.rt.Kind() != reflect.Struct {
-		return newInvalidValidationError("Not a struct") // if not struct we immediately return an error
+		return newUserError("Not a struct") // if not struct we immediately return an error
 	}
 	return nil
 }
@@ -54,7 +71,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(Validate_(vd.f.v.Interface()).Errors...) // TODO: make a nested error
+			vd.err.Append(Validate(vd.f.v.Interface()).Errors...) // TODO: make a nested error
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
@@ -68,7 +85,7 @@ FieldLoop:
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
 				if ru == required { // i.e. if zero and required we append a error
-					vd.err.Append(NewValidateError("Required field not found", vd.f.t.Name, "", string(vd.f.t.Tag), vd.f.v.Interface(), vd.f.v.String()))
+					vd.err.Append(NewValidateError("Required field not found", vd.f.t.Name))
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
@@ -88,29 +105,29 @@ FieldLoop:
 }
 
 // handles the rules without a equal-to sign, required, email, etc.
-func (vd *validator) handleNonEqRules(rule string) error {
-	var err error
+func (vd *validator) handleNonEqRules(rule string) ValidationError {
+	var err ValidationError
 	v := vd.f.v.Interface()
 	switch rule { // written a theory at the end of this function to make this cleaner
 	case required: // we don't deal with required
 	case email:
-		err = emailRx.validate(vd, v)
+		err = emailRx.validate(vd.f, v)
 	case e164:
-		err = e164Rx.validate(vd, v)
+		err = e164Rx.validate(vd.f, v)
 	case url:
-		err = urlRx.validate(vd, v)
+		err = urlRx.validate(vd.f, v)
 	case uuid:
-		err = uuidRx.validate(vd, v)
+		err = uuidRx.validate(vd.f, v)
 	case alpha:
-		err = alphaRx.validate(vd, v)
+		err = alphaRx.validate(vd.f, v)
 	case alphanum:
-		err = alphanumRx.validate(vd, v)
+		err = alphanumRx.validate(vd.f, v)
 	case numeric:
-		err = numericRx.validate(vd, v)
+		err = numericRx.validate(vd.f, v)
 	case ipv4:
-		err = ipv4Rx.validate(vd, v)
+		err = ipv4Rx.validate(vd.f, v)
 	case ipv6:
-		err = ipv6Rx.validate(vd, v)
+		err = ipv6Rx.validate(vd.f, v)
 	default: // eqRules here, min,max,lte,gte,etc.
 		err = vd.handleEqRules(rule) // rule: min=2
 	}
@@ -124,20 +141,20 @@ func (vd *validator) handleNonEqRules(rule string) error {
 // according to my option that is. So I will let this one slide.
 // It is a bit of repeating but it keeps things separated.
 
-func (vd *validator) handleEqRules(eqRule string) error {
+func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	var isCollection = vd.f.kind == reflect.Slice || vd.f.kind == reflect.Array || vd.f.kind == reflect.Map || vd.f.kind == reflect.String
 	split := strings.Split(eqRule, "=")
 	if len(split) != 2 {
-		return newInvalidValidationError("Syntax error for tag")
+		return newUserError("Syntax error for tag")
 	}
 	rule := split[0]
 	ruleValueStr := split[1]
-	var err FieldError
+	var err ValidationError
 	switch rule {
 	case min_, max_, gte, lte:
 		ruleValue, e := strconv.ParseFloat(ruleValueStr, 64)
 		if e != nil {
-			return newInvalidValidationError(fmt.Sprintf("Condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
+			return newUserError(fmt.Sprintf("Condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
 		}
 		// type checking for the field value here
 		if slices.Contains(NumTypes, vd.f.kind) { // checking numTypes, int,uint,float,etc.
@@ -145,25 +162,25 @@ func (vd *validator) handleEqRules(eqRule string) error {
 		} else if isCollection { // array, slice, string
 			err = vd.handleNumericComparison(rule, float64(vd.f.v.Len()), ruleValue, vd.f.kind.String()+" length")
 		} else { // unsupported
-			return newInvalidValidationError(fmt.Sprintf("The field must be either string, collection or numeric. field: %v", vd.f.t.Name))
+			err = newUserError(fmt.Sprintf("The field must be either string, collection or numeric. field: %v", vd.f.t.Name))
 		}
 	case len_:
 		ruleValue, e := strconv.Atoi(ruleValueStr)
 		if e != nil {
-			return newInvalidValidationError(fmt.Sprintf("len tag value must be int. field: %v", vd.f.t.Name))
+			return newUserError(fmt.Sprintf("len tag value must be int. field: %v", vd.f.t.Name))
 		}
 		if isCollection {
 			if vd.f.v.Len() != ruleValue {
-				err = NewFieldError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, vd.f.t.Name, ruleValueStr, string(vd.f.t.Tag), vd.f.v.Interface(), vd.f.v.String())
+				err = NewValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, vd.f.t.Name)
 			}
 		} else {
-			return newInvalidValidationError(fmt.Sprintf("The field must be either string or collection. field: %v", vd.f.t.Name))
+			err = newUserError(fmt.Sprintf("The field must be either string or collection. field: %v", vd.f.t.Name))
 		}
 	case oneof:
 		if vd.f.kind == reflect.String {
 			ruleValues := strings.Split(ruleValueStr, " ")
 			if !slices.Contains(ruleValues, vd.f.v.String()) {
-				err = NewValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), vd.f.t.Name, ruleValueStr, string(vd.f.t.Tag), vd.f.v.Interface(), vd.f.v.String())
+				err = NewValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), vd.f.t.Name)
 			}
 		} else {
 			err = newUserError("oneof tag must only be used on a string field")
@@ -178,31 +195,28 @@ func (vd *validator) handleEqRules(eqRule string) error {
 func (vd *validator) handleNumericComparison(rule string, value float64, ruleValue float64, errorValueName string) ValidationError {
 	switch rule {
 	case min_, gte:
-		if value <= ruleValue {
+		if value < ruleValue {
 			return NewValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), vd.f.t.Name)
 		}
 	case max_, lte:
-		if value >= ruleValue {
+		if value > ruleValue {
 			return NewValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), vd.f.t.Name)
 		}
 	}
 	return nil
 }
 
-func Validate_(target any) *GroupedValidationError {
+func Validate(target any) *GroupedValidationError {
 	v := &validator{
 		target: target,
 		err:    NewGroupedValidationError(),
 	}
-	vd.rv = reflect.ValueOf(vd.target)
-	if vd.rv.Kind() == reflect.Pointer { // if v is a pointer then we dereference it
-		vd.rv = vd.rv.Elem()
+	err := v.init()
+	if err != nil {
+		v.err.Append(err)
+		return v.err
 	}
-	vd.rt = vd.rv.Type()
-	if vd.rt.Kind() != reflect.Struct {
-		return newInvalidValidationError("Not a struct") // if not struct we immediately return an error
-	}
-	vd.loop()
-	return vd.err
+	v.loop()
+	return v.err
 
 }
