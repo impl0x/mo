@@ -71,7 +71,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(Validate(vd.f.v.Interface()).Errors...) // TODO: make a nested error
+			vd.err.Append(Validate(vd.f.v.Interface())) 
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
@@ -85,7 +85,7 @@ FieldLoop:
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
 				if ru == required { // i.e. if zero and required we append a error
-					vd.err.Append(NewValidateError("Required field not found", vd.f.t.Name))
+					vd.err.Append(NewValidateError("Required field not found", vd.f.t.Name, "", string(vd.f.t.Tag), vd.f.v.Interface(), vd.f.v.String()))
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
@@ -171,7 +171,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		}
 		if isCollection {
 			if vd.f.v.Len() != ruleValue {
-				err = NewValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, vd.f.t.Name)
+				err = NewValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, vd.f.t.Name, ruleValueStr, string(vd.f.t.Tag), vd.f.v.Interface(), vd.f.v.String())
 			}
 		} else {
 			err = newUserError(fmt.Sprintf("The field must be either string or collection. field: %v", vd.f.t.Name))
@@ -180,7 +180,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		if vd.f.kind == reflect.String {
 			ruleValues := strings.Split(ruleValueStr, " ")
 			if !slices.Contains(ruleValues, vd.f.v.String()) {
-				err = NewValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), vd.f.t.Name)
+				err = NewValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), vd.f.t.Name, ruleValueStr, string(vd.f.t.Tag), vd.f.v.Interface(), vd.f.v.String())
 			}
 		} else {
 			err = newUserError("oneof tag must only be used on a string field")
@@ -196,11 +196,11 @@ func (vd *validator) handleNumericComparison(rule string, value float64, ruleVal
 	switch rule {
 	case min_, gte:
 		if value < ruleValue {
-			return NewValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), vd.f.t.Name)
+			return NewValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), vd.f.t.Name, fmt.Sprintf("%v", ruleValue), string(vd.f.t.Tag), value, vd.f.v.String())
 		}
 	case max_, lte:
 		if value > ruleValue {
-			return NewValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), vd.f.t.Name)
+			return NewValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), vd.f.t.Name, fmt.Sprintf("%v", ruleValue), string(vd.f.t.Tag), value, vd.f.v.String())
 		}
 	}
 	return nil
