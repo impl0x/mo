@@ -26,6 +26,7 @@ var NumTypes = []reflect.Kind{
 const validatorTag = "validate"
 
 type validator struct {
+	parent string
 	target any
 	err    *GroupedValidationError
 
@@ -52,6 +53,7 @@ func (vd *validator) init() ValidationError {
 	if vd.rt.Kind() != reflect.Struct {
 		return newUserError("Not a struct") // if not struct we immediately return an error
 	}
+	vd.parent=vd.rt.Name()+"."
 	return nil
 }
 
@@ -85,7 +87,7 @@ FieldLoop:
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
 				if ru == required { // i.e. if zero and required we append a error
-					vd.err.Append(NewValidateError("Required field not found", vd.f.t.Name))
+					vd.err.Append(NewFieldValidateError("Required field not found", "",vd.parent,&vd.f))
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
@@ -111,23 +113,23 @@ func (vd *validator) handleNonEqRules(rule string) ValidationError {
 	switch rule { // written a theory at the end of this function to make this cleaner
 	case required: // we don't deal with required
 	case email:
-		err = emailRx.validate(vd.f, v)
+		err = emailRx.validate(vd, v)
 	case e164:
-		err = e164Rx.validate(vd.f, v)
+		err = e164Rx.validate(vd, v)
 	case url:
-		err = urlRx.validate(vd.f, v)
+		err = urlRx.validate(vd, v)
 	case uuid:
-		err = uuidRx.validate(vd.f, v)
+		err = uuidRx.validate(vd, v)
 	case alpha:
-		err = alphaRx.validate(vd.f, v)
+		err = alphaRx.validate(vd, v)
 	case alphanum:
-		err = alphanumRx.validate(vd.f, v)
+		err = alphanumRx.validate(vd, v)
 	case numeric:
-		err = numericRx.validate(vd.f, v)
+		err = numericRx.validate(vd, v)
 	case ipv4:
-		err = ipv4Rx.validate(vd.f, v)
+		err = ipv4Rx.validate(vd, v)
 	case ipv6:
-		err = ipv6Rx.validate(vd.f, v)
+		err = ipv6Rx.validate(vd, v)
 	default: // eqRules here, min,max,lte,gte,etc.
 		err = vd.handleEqRules(rule) // rule: min=2
 	}
@@ -152,15 +154,12 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	var err ValidationError
 	switch rule {
 	case min_, max_, gte, lte:
-		ruleValue, e := strconv.ParseFloat(ruleValueStr, 64)
-		if e != nil {
-			return newUserError(fmt.Sprintf("Condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
-		}
+		
 		// type checking for the field value here
 		if slices.Contains(NumTypes, vd.f.kind) { // checking numTypes, int,uint,float,etc.
-			err = vd.handleNumericComparison(rule, vd.f.v.Convert(reflect.TypeFor[float64]()).Float(), ruleValue, "Field value")
+			err = vd.handleNumericComparison(rule, vd.f.v.Convert(reflect.TypeFor[float64]()).Float(), ruleValueStr, "Field value")
 		} else if isCollection { // array, slice, string
-			err = vd.handleNumericComparison(rule, float64(vd.f.v.Len()), ruleValue, vd.f.kind.String()+" length")
+			err = vd.handleNumericComparison(rule, float64(vd.f.v.Len()), ruleValueStr, vd.f.kind.String()+" length")
 		} else { // unsupported
 			err = newUserError(fmt.Sprintf("The field must be either string, collection or numeric. field: %v", vd.f.t.Name))
 		}
@@ -171,7 +170,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		}
 		if isCollection {
 			if vd.f.v.Len() != ruleValue {
-				err = NewValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, vd.f.t.Name)
+				err = NewFieldValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr,ruleValueStr,vd.parent,&vd.f)
 			}
 		} else {
 			err = newUserError(fmt.Sprintf("The field must be either string or collection. field: %v", vd.f.t.Name))
@@ -180,7 +179,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		if vd.f.kind == reflect.String {
 			ruleValues := strings.Split(ruleValueStr, " ")
 			if !slices.Contains(ruleValues, vd.f.v.String()) {
-				err = NewValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), vd.f.t.Name)
+				err = NewFieldValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), ruleValueStr,vd.parent,&vd.f)
 			}
 		} else {
 			err = newUserError("oneof tag must only be used on a string field")
@@ -192,15 +191,19 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	return err
 }
 
-func (vd *validator) handleNumericComparison(rule string, value float64, ruleValue float64, errorValueName string) ValidationError {
+func (vd *validator) handleNumericComparison(rule string, value float64, ruleValueStr string, errorValueName string) ValidationError {
+	ruleValue, e := strconv.ParseFloat(ruleValueStr, 64)
+		if e != nil {
+			return newUserError(fmt.Sprintf("Condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
+		}
 	switch rule {
 	case min_, gte:
 		if value < ruleValue {
-			return NewValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), vd.f.t.Name)
+			return NewFieldValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), ruleValueStr,vd.parent,&vd.f)
 		}
 	case max_, lte:
 		if value > ruleValue {
-			return NewValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), vd.f.t.Name)
+			return NewFieldValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), ruleValueStr,vd.parent,&vd.f)
 		}
 	}
 	return nil
@@ -217,6 +220,9 @@ func Validate(target any) *GroupedValidationError {
 		return v.err
 	}
 	v.loop()
+	if len(v.err.Errors)==0{
+		return nil
+	}
 	return v.err
 
 }
