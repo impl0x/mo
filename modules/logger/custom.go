@@ -37,7 +37,7 @@ var patch = Level{
 
 var put = Level{
 	Color: Colors["magenta"],
-	Label: "PATCH",
+	Label: "PUT",
 }
 
 var delete = Level{
