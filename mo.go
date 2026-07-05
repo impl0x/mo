@@ -8,12 +8,14 @@ import (
 
 type HandlerFunc func(*Context) error
 type Middleware func(HandlerFunc) HandlerFunc
+type PostMiddleware func(*Context)
 
 type Mo struct {
 	router           Router           // root router
 	HTTPErrorHandler HTTPErrorHandler // Error handler must also handle nil, because every handler return is at the end handed over to the errorHandler even if its a nil
 	Middlewares      []Middleware
-	Headers          *HeadersManager // Headers, sent in every request
+	PostMiddlewares  []PostMiddleware // runs after all the middlewares and handlers have been ran. used to logging or cleaning up, Don't use this to write to response or set status. This also runs when theres a routing error and no handler or middlewares run.
+	Headers          *HeadersManager  // Headers, sent in every request
 	Config           *MoConfig
 }
 
@@ -64,16 +66,19 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, err := m.router.Find(r.URL.Path, r.Method)
 	if err != nil {
 		m.HTTPErrorHandler(c, err) // either Method wrong or path Not found
-		return
+	} else {
+		h := route.Handler
+		for _, mi := range m.Middlewares {
+			h = mi(h)
+		}
+		for _, mi := range route.Middlewares {
+			h = mi(h)
+		}
+		m.HTTPErrorHandler(c, h(c))
 	}
-	h := route.Handler
-	for _, mi := range m.Middlewares {
-		h = mi(h)
+	for _, pmi := range m.PostMiddlewares {
+		pmi(c)
 	}
-	for _, mi := range route.Middlewares {
-		h = mi(h)
-	}
-	m.HTTPErrorHandler(c, h(c))
 }
 
 func (m *Mo) add(path string, method string, handler HandlerFunc, mi []Middleware) *Route {

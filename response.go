@@ -45,3 +45,7 @@ func (r *Response) Write(b []byte) (int, error) {
 	r.committed = true
 	return r.ResponseWriter.Write(b)
 }
+
+func (r *Response) StatusCode()int{
+	return r.statusCode
+}
