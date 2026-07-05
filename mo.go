@@ -57,7 +57,7 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	responseHeaders := DefaultHeadersManager()
 	c := &Context{
 		request:         r,
-		response:        &Response{w, false, m.Headers, responseHeaders},
+		response:        newResponse(w, m.Headers),
 		ResponseHeaders: responseHeaders,
 		Mo:              m,
 	}

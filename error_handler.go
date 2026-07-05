@@ -19,9 +19,6 @@ type HTTPErrorHandler func(*Context, error)
 // Then return a valid json from JsonFormat() method and a valid status-code from StatusCode()
 func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 	return func(c *Context, err error) {
-		if err == nil {
-			return
-		}
 		if c.response.committed {
 			if c.Mo.Config.LogErrors {
 				logger.Mo("Cannot write error, response already sent!", "err", err.Error())
@@ -47,6 +44,8 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 				"code":    http.StatusExpectationFailed,
 				"message": fmt.Sprintf("Wrong type used for field %s", e.Field),
 			})
+		case nil:
+			c.NoContent(http.StatusNoContent)
 		default:
 			if e.Error() == "EOF" { // rare case because json parsing returns a errorString of EOF when a body is empty.
 				c.JSON(http.StatusUnprocessableEntity, map[string]any{
