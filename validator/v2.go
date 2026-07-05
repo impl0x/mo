@@ -73,7 +73,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(validate(vd.f.v.Interface(), &validator{parent: vd.parent+".",target: vd.target, err: NewGroupedValidationError()}).Errors...) // TODO: make a nested error
+			vd.err.Append(validate(vd.f.v.Interface(), &validator{parent: vd.parent+".",target: vd.f.v.Interface(), err: NewGroupedValidationError()}).Errors...) // TODO: make a nested error
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
