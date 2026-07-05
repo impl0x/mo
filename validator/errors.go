@@ -2,6 +2,7 @@ package validator
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/impl0x/mo/modules/logger"
 )
@@ -109,7 +110,11 @@ func (ve *FieldValidateError) Field() string {
 //
 // ex: User.Age
 func (ve *FieldValidateError) Namespace() string {
-	return ve.parent + ve.f.t.Name
+	fName:=ve.f.t.Name
+	if DefaultNameSpaceSettings.UseLowerCase{
+		fName=strings.ToLower(fName)
+	}
+	return ve.parent +fName
 }
 
 func (ve *FieldValidateError) Value() any {

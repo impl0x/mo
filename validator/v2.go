@@ -26,15 +26,31 @@ var NumTypes = []reflect.Kind{
 const validatorTag = "validate"
 
 type validator struct {
-	parent string
-	target any
-	err    *GroupedValidationError
+	parent            string
+	target            any
+	err               *GroupedValidationError
 
 	rv reflect.Value
 	rt reflect.Type
 
 	f field
 }
+
+func newValidator(target any, parent string)*validator  {
+	return &validator{
+		parent:parent,
+		target: target,
+		err: NewGroupedValidationError(),
+	}
+}
+
+type NameSpaceSettings struct {
+	UseLowerCase       bool // true: user.age, false: User.Age
+	UseParentDotSyntax bool // true: User.Age, false: Age
+	UseRootStructName bool // true: User.Address.City, false: Address.City
+}
+
+var DefaultNameSpaceSettings = NameSpaceSettings{true, true,false}
 
 type field struct {
 	v    reflect.Value
@@ -44,7 +60,7 @@ type field struct {
 	rules []string
 }
 
-func (vd *validator) init() ValidationError {
+func (vd *validator) init(nested bool) ValidationError {
 	vd.rv = reflect.ValueOf(vd.target)
 	if vd.rv.Kind() == reflect.Pointer { // if v is a pointer then we dereference it
 		vd.rv = vd.rv.Elem()
@@ -53,7 +69,16 @@ func (vd *validator) init() ValidationError {
 	if vd.rt.Kind() != reflect.Struct {
 		return newUserError("Not a struct") // if not struct we immediately return an error
 	}
-	vd.parent=vd.parent+vd.rt.Name()+"."
+	if DefaultNameSpaceSettings.UseParentDotSyntax {
+		vd.parent = vd.parent + vd.rt.Name() + "."
+		if !nested && !DefaultNameSpaceSettings.UseRootStructName{
+			vd.parent=""
+		}
+	}
+	if DefaultNameSpaceSettings.UseLowerCase{
+		vd.parent=strings.ToLower(vd.parent)
+	}
+
 	return nil
 }
 
@@ -73,7 +98,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(validate(vd.f.v.Interface(), &validator{parent: vd.parent+".",target: vd.f.v.Interface(), err: NewGroupedValidationError()}).Errors...) // TODO: make a nested error
+			vd.err.Append(validate(newValidator(vd.f.v.Interface(),vd.parent),true).Errors...) // TODO: make a nested error
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
@@ -87,7 +112,7 @@ FieldLoop:
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
 				if ru == required { // i.e. if zero and required we append a error
-					vd.err.Append(NewFieldValidateError("Required field not found", "",vd.parent,&vd.f))
+					vd.err.Append(NewFieldValidateError("Required field not found", "", vd.parent, &vd.f))
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
@@ -154,7 +179,6 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	var err ValidationError
 	switch rule {
 	case min_, max_, gte, lte:
-		
 		// type checking for the field value here
 		if slices.Contains(NumTypes, vd.f.kind) { // checking numTypes, int,uint,float,etc.
 			err = vd.handleNumericComparison(rule, vd.f.v.Convert(reflect.TypeFor[float64]()).Float(), ruleValueStr, "Field value")
@@ -170,7 +194,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		}
 		if isCollection {
 			if vd.f.v.Len() != ruleValue {
-				err = NewFieldValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr,ruleValueStr,vd.parent,&vd.f)
+				err = NewFieldValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, ruleValueStr, vd.parent, &vd.f)
 			}
 		} else {
 			err = newUserError(fmt.Sprintf("The field must be either string or collection. field: %v", vd.f.t.Name))
@@ -179,7 +203,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		if vd.f.kind == reflect.String {
 			ruleValues := strings.Split(ruleValueStr, " ")
 			if !slices.Contains(ruleValues, vd.f.v.String()) {
-				err = NewFieldValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), ruleValueStr,vd.parent,&vd.f)
+				err = NewFieldValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), ruleValueStr, vd.parent, &vd.f)
 			}
 		} else {
 			err = newUserError("oneof tag must only be used on a string field")
@@ -193,17 +217,17 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 
 func (vd *validator) handleNumericComparison(rule string, value float64, ruleValueStr string, errorValueName string) ValidationError {
 	ruleValue, e := strconv.ParseFloat(ruleValueStr, 64)
-		if e != nil {
-			return newUserError(fmt.Sprintf("Condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
-		}
+	if e != nil {
+		return newUserError(fmt.Sprintf("Condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
+	}
 	switch rule {
 	case min_, gte:
 		if value < ruleValue {
-			return NewFieldValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), ruleValueStr,vd.parent,&vd.f)
+			return NewFieldValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), ruleValueStr, vd.parent, &vd.f)
 		}
 	case max_, lte:
 		if value > ruleValue {
-			return NewFieldValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), ruleValueStr,vd.parent,&vd.f)
+			return NewFieldValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), ruleValueStr, vd.parent, &vd.f)
 		}
 	}
 	return nil
@@ -214,17 +238,17 @@ func Validate(target any) *GroupedValidationError {
 		target: target,
 		err:    NewGroupedValidationError(),
 	}
-	return validate(target, v)
+	return validate(v, false)
 }
 
-func validate(target any, vd *validator) *GroupedValidationError{
-	err := vd.init()
+func validate(vd *validator, nested bool) *GroupedValidationError {
+	err := vd.init(nested)
 	if err != nil {
 		vd.err.Append(err)
 		return vd.err
 	}
 	vd.loop()
-	if len(vd.err.Errors)==0{
+	if len(vd.err.Errors) == 0 {
 		return nil
 	}
 	return vd.err
