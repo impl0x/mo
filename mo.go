@@ -50,7 +50,7 @@ func (m *Mo) Start(addr string) error {
 	if m.Config.PrintStartMsg {
 		logger.Mo("Started Mo HTTP Server.")
 	}
-	return http.ListenAndServe(":8080", m)
+	return http.ListenAndServe(addr, m)
 }
 
 func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
