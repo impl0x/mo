@@ -53,7 +53,7 @@ func (vd *validator) init() ValidationError {
 	if vd.rt.Kind() != reflect.Struct {
 		return newUserError("Not a struct") // if not struct we immediately return an error
 	}
-	vd.parent=vd.rt.Name()+"."
+	vd.parent=vd.parent+vd.rt.Name()+"."
 	return nil
 }
 
@@ -73,7 +73,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(Validate(vd.f.v.Interface()).Errors...) // TODO: make a nested error
+			vd.err.Append(validate(vd.f.v.Interface(), &validator{parent: vd.parent+".",target: vd.target, err: NewGroupedValidationError()}).Errors...) // TODO: make a nested error
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
@@ -214,15 +214,18 @@ func Validate(target any) *GroupedValidationError {
 		target: target,
 		err:    NewGroupedValidationError(),
 	}
-	err := v.init()
+	return validate(target, v)
+}
+
+func validate(target any, vd *validator) *GroupedValidationError{
+	err := vd.init()
 	if err != nil {
-		v.err.Append(err)
-		return v.err
+		vd.err.Append(err)
+		return vd.err
 	}
-	v.loop()
-	if len(v.err.Errors)==0{
+	vd.loop()
+	if len(vd.err.Errors)==0{
 		return nil
 	}
-	return v.err
-
+	return vd.err
 }
