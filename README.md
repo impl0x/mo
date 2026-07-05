@@ -123,11 +123,39 @@ func main() {
 ```
 has a few rules here
 - required: will fail if the field is zero value
+- optional: will skip if its a zero value
 - email: matches against a regex
 - url: same as above
+- ipv4, ipv6
+- alpha, alphanum
+- e164: for phone numbers
+- uuid
 - min: if string, length need to satisfy this, if number then need to be more than this
 - max: same logic as above
 - oneof: need to be one of the valid options
+- lte: less than or equal to
+- gte: greater than or equal to
+- len: must be exactly this long, applies to string, arrays, slices, maps.
+
+#### Error format
+The `validator.Validate` function returns a `*validator.GroupedValidationError` type.  
+Which has a field called Errors which contains fields of type of the interface `ValidationError`  
+You can iterate over it and type Assert ValidateError struct to get access to the methods which return  
+almost everything you need to make a custom error message with it.  
+Else you can directly call the `.JsonFormat()` method on the `GroupedValidationError` that was initially returned, this returns the default format of errors which is in this format:  
+example: if we validated a wrong email and a wrong url, and then called the `JsonFormat` on that error we get this as a `[]Map`.
+```json
+[
+	{
+		"field":"email",
+		"message":"Not a valid email"
+	},
+	{
+		"field":"url",
+		"message":"Not a valid url"
+	}
+]
+```
 ### Header management  
 #### *Response headers* 
 #### Default headers:  

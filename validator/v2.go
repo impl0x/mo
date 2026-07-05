@@ -50,7 +50,7 @@ type NameSpaceSettings struct {
 	UseRootStructName bool // true: User.Address.City, false: Address.City
 }
 
-var DefaultNameSpaceSettings = NameSpaceSettings{true, true,false}
+var DefaultNameSpaceSettings = NameSpaceSettings{true, true,false} // do not mutate while running, only mutate at the start because this is a global variable 
 
 type field struct {
 	v    reflect.Value
@@ -116,7 +116,7 @@ FieldLoop:
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
-					continue FieldLoop // its optional so we can continue without checks
+					continue FieldLoop // its zero and optional so we can continue without checks
 				}
 			}
 		}
