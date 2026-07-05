@@ -16,8 +16,8 @@ var validator = Level{
 	Label: "Validator",
 }
 
-func Validator(v ...string){
-	log(validator,v)
+func Validator(v ...string) {
+	log(validator, v)
 }
 
 var get = Level{

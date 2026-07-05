@@ -75,7 +75,7 @@ func (r *regexRule) validate(vd *validator, v any) ValidationError {
 		return newUserError("Cannot validate \"email\" rule against a " + vd.f.kind.String())
 	}
 	if !r.regEx.MatchString(v.(string)) {
-		return NewFieldValidateError("Not a valid "+r.name, "",vd.parent,&vd.f)
+		return NewFieldValidateError("Not a valid "+r.name, "", vd.parent, &vd.f)
 	}
 	return nil
 }

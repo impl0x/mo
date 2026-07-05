@@ -77,7 +77,7 @@ type FieldValidateError struct {
 
 func NewFieldValidateError(msg, param, parent string, field *field) *FieldValidateError {
 	return &FieldValidateError{
-		msg, param,parent, field,
+		msg, param, parent, field,
 	}
 }
 
@@ -110,11 +110,11 @@ func (ve *FieldValidateError) Field() string {
 //
 // ex: User.Age
 func (ve *FieldValidateError) Namespace() string {
-	fName:=ve.f.t.Name
-	if DefaultNameSpaceSettings.UseLowerCase{
-		fName=strings.ToLower(fName)
+	fName := ve.f.t.Name
+	if DefaultNameSpaceSettings.UseLowerCase {
+		fName = strings.ToLower(fName)
 	}
-	return ve.parent +fName
+	return ve.parent + fName
 }
 
 func (ve *FieldValidateError) Value() any {

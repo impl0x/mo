@@ -26,9 +26,9 @@ var NumTypes = []reflect.Kind{
 const validatorTag = "validate"
 
 type validator struct {
-	parent            string
-	target            any
-	err               *GroupedValidationError
+	parent string
+	target any
+	err    *GroupedValidationError
 
 	rv reflect.Value
 	rt reflect.Type
@@ -36,21 +36,21 @@ type validator struct {
 	f field
 }
 
-func newValidator(target any, parent string)*validator  {
+func newValidator(target any, parent string) *validator {
 	return &validator{
-		parent:parent,
+		parent: parent,
 		target: target,
-		err: NewGroupedValidationError(),
+		err:    NewGroupedValidationError(),
 	}
 }
 
 type NameSpaceSettings struct {
 	UseLowerCase       bool // true: user.age, false: User.Age
 	UseParentDotSyntax bool // true: User.Age, false: Age
-	UseRootStructName bool // true: User.Address.City, false: Address.City
+	UseRootStructName  bool // true: User.Address.City, false: Address.City
 }
 
-var DefaultNameSpaceSettings = NameSpaceSettings{true, true,false} // do not mutate while running, only mutate at the start because this is a global variable 
+var DefaultNameSpaceSettings = NameSpaceSettings{true, true, false} // do not mutate while running, only mutate at the start because this is a global variable
 
 type field struct {
 	v    reflect.Value
@@ -71,12 +71,12 @@ func (vd *validator) init(nested bool) ValidationError {
 	}
 	if DefaultNameSpaceSettings.UseParentDotSyntax {
 		vd.parent = vd.parent + vd.rt.Name() + "."
-		if !nested && !DefaultNameSpaceSettings.UseRootStructName{
-			vd.parent=""
+		if !nested && !DefaultNameSpaceSettings.UseRootStructName {
+			vd.parent = ""
 		}
 	}
-	if DefaultNameSpaceSettings.UseLowerCase{
-		vd.parent=strings.ToLower(vd.parent)
+	if DefaultNameSpaceSettings.UseLowerCase {
+		vd.parent = strings.ToLower(vd.parent)
 	}
 
 	return nil
@@ -98,7 +98,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(validate(newValidator(vd.f.v.Interface(),vd.parent),true).Errors...) // TODO: make a nested error
+			vd.err.Append(validate(newValidator(vd.f.v.Interface(), vd.parent), true).Errors...) // TODO: make a nested error
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
