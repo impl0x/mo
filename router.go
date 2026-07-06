@@ -7,11 +7,17 @@ type Router interface {
 	Add(*Route)                                       // adds a route
 }
 
+type routerConfig struct {
+	TrimSuffixSlashes bool // trims if there is a leading slash, ex: users/:id/ -> users/:id, remember these 2 are different paths if this option is not enabled.
+}
+
+var DefaultRouterConfig = routerConfig{true}	// default config for the router
+
 type Route struct {
 	Path        string
 	Method      string
 	Handler     HandlerFunc
-	Middlewares []Middleware // returns a copy of slice, don't mutate
+	Middlewares []Middleware // returns a copy of slice, don'rr mutate
 }
 
 // o(n) and doesn't support dynamic routing
@@ -24,6 +30,12 @@ func NewBasicRouter() *BasicRouter {
 }
 
 func (r *BasicRouter) Add(ro *Route) {
+	if ro.Path[0] != '/' {
+		ro.Path = "/" + ro.Path
+	}
+	if DefaultRouterConfig.TrimSuffixSlashes {
+		ro.Path=strings.TrimSuffix(ro.Path, "/")
+	}
 	r.Routes = append(r.Routes, ro)
 }
 func (r *BasicRouter) Find(path string, method string) (*Route, HttpErrorInterface) {
@@ -38,8 +50,9 @@ func (r *BasicRouter) Find(path string, method string) (*Route, HttpErrorInterfa
 	return nil, ErrNotFound
 }
 
-type RadixRouter struct {
-}
+
+
+
 
 type methodHandlers struct {
 	totalHandlers uint8
@@ -53,74 +66,117 @@ type methodHandlers struct {
 	delete  HandlerFunc
 }
 
+func createMhAndAdd(method string, handler HandlerFunc) methodHandlers {
+	mh := methodHandlers{}
+	mh.add(method, handler)
+	return mh
+}
+
+
 type node struct {
 	path     string
 	handlers methodHandlers
-	parent   *node
 	children []*node
 }
 
-var root = &node{
-	path:   "",
-	parent: nil,
-	// example data
-	children: []*node{
-		{
-			path: "users",
-			children: []*node{
-				{
-					path:     "posts",
-					handlers: methodHandlers{totalHandlers: 1, get: func(ctx *Context) error { return NewHTTPError(200, "test") }},
-					children: nil,
-				},
-				{
-					path:     ":id",
-					children: nil,
-				},
-			},
-		},
-	},
-}
-
-type Tree struct {
-}
-
-func (t *Tree) Add(path string, method string, handler HandlerFunc) {
-	parts := strings.Split(path, "/")
-	Node := root
-Outer:
-	for _, p := range parts {
-		for _, cn := range Node.children {
-			if p == cn.path {
-				Node = cn
-				continue Outer
-			}
-		}
+func newNode(path string, mh methodHandlers) *node {
+	return &node{
+		path,
+		mh,
+		nil,
 	}
 }
 
-func (t *Tree) Find(path string, method string) (HandlerFunc, error) {
-	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	Node := root
-Outer:
+type RadixRouter struct {
+	root node
+}
+
+// o(k) lookup times, uses a compact trie like structure
+//
+// k is the length of the list when the url is split in the slashes
+func NewRadixRouter()*RadixRouter{
+	return &RadixRouter{}
+}
+
+func (rr *RadixRouter) cleanPathString(p string) string {
+	p = strings.TrimPrefix(p, "/")
+	if DefaultRouterConfig.TrimSuffixSlashes {
+		return strings.TrimSuffix(p, "/")
+	}
+	return p
+}
+
+func (rr *RadixRouter) Add(path string, method string, handler HandlerFunc) {
+	path = rr.cleanPathString(path)
+	parts := strings.Split(path, "/")
+	Node := &rr.root
+	Outer:
 	for _, p := range parts {
+		// we traverse till we match any of the valid nodes and find the best and deepest parent possible
 		for _, cn := range Node.children {
 			if p == cn.path {
 				Node = cn
 				continue Outer
 			}
 		}
+		// the program arrives here only if the above loop does not match any children for the current given path segment.
+		// if it doesn't it means the path already exists and the function exits normally.
+		// so we create a child and append it to the current Node's children
+		Node.children = append(
+			Node.children, newNode(
+				p,
+				createMhAndAdd(method, handler),
+			),
+		)
+	}
+}
+
+func (rr *RadixRouter) Find(path string, method string) (HandlerFunc, error) {
+	path = rr.cleanPathString(path)
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	Node := &rr.root
+	Outer:
+	for _, p := range parts {
+		for _, cn := range Node.children {
+			if p == cn.path {
+				Node = cn      // if we find a match then we assign the value of Node to the current child we found
+				continue Outer // and we continue the loop, if the parts has ran out then this is the correct node we are in and have found our match
+			}
+		}
+		// if the program arrives here it means it has ran out of children to search and the path is NotFound.
 		return nil, ErrNotFound
 	}
-
+	// means there is a node without a handler. it just means not found for the user
+	// the node exists but lacks functionality
 	if Node.handlers.totalHandlers == 0 {
 		return nil, ErrNotFound
 	}
-	hn:=Node.handlers.fromString(method)
+	hn := Node.handlers.fromString(method)
 	if hn == nil {
 		return nil, ErrMethodNotAllowed
 	}
-	return hn,nil
+	return hn, nil
+}
+func (mh *methodHandlers) add(method string, handler HandlerFunc) {
+	switch method {
+	case "GET":
+		mh.get = handler
+	case "POST":
+		mh.post = handler
+	case "PUT":
+		mh.put = handler
+	case "PATCH":
+		mh.patch = handler
+	case "DELETE":
+		mh.delete = handler
+	case "OPTIONS":
+		mh.options = handler
+	case "HEAD":
+		mh.head = handler
+	default:
+		return
+	}
+	mh.totalHandlers++
 }
 
 func (mh *methodHandlers) fromString(method string) HandlerFunc {
@@ -140,6 +196,6 @@ func (mh *methodHandlers) fromString(method string) HandlerFunc {
 	case "HEAD":
 		return mh.head
 	default:
-		return nil
+		return nil // doesn't matter if it gets triggered it just gives a 405 Incorrect method.
 	}
 }

@@ -83,9 +83,6 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Mo) add(path string, method string, handler HandlerFunc, mi []Middleware) *Route {
-	if path[0] != '/' {
-		path = "/" + path
-	}
 	r := &Route{path, method, handler, mi}
 	m.router.Add(r)
 	return r
