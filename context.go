@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"reflect"
 
 	"github.com/impl0x/mo/modules/logger"
@@ -16,6 +17,7 @@ type Context struct {
 	ResponseHeaders *HeadersManager // Sends headers with the response for this request
 	Mo              *Mo             // original Mo instance
 	Store           map[string]any  // stores context values
+	params          map[string]string
 }
 
 func (c *Context) writeContentType(value string) {
@@ -28,6 +30,7 @@ func (c *Context) writeContentType(value string) {
 func (c *Context) Request() *http.Request {
 	return c.request
 }
+
 func (c *Context) Response() *Response {
 	return c.response
 }
@@ -70,6 +73,17 @@ func (c *Context) JSON(code int, target any) error {
 
 func (c *Context) TEXT(code int, body string) error {
 	return c.Blob(code, MIMETextPlain, []byte(body))
+}
+
+// use get to retrieve values
+func (c *Context) QueryParams() url.Values {
+	return c.request.URL.Query()
+}
+
+// Returns the url parameter, ex: "users/:id", c.Param("id") will give the value for the
+func (c *Context) Param(key string)(string,bool){
+	v,ok:=c.params[key]
+	return v,ok
 }
 
 // ErrNonExistentKey is error that is returned when key does not exist
