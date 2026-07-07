@@ -56,6 +56,9 @@ func (m *Mo) Start(addr string) error {
 	return http.ListenAndServe(addr, m)
 }
 
+// the request flow looks like this
+//
+// r -> global middlewares -> route middlewares -> handler -> error handler -> post middlewares -x-
 func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	responseHeaders := DefaultHeadersManager()
 	c := &Context{
@@ -78,7 +81,7 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m.HTTPErrorHandler(c, h(c))
 	}
 	for _, pmi := range m.PostMiddlewares {
-		pmi(c)
+		pmi(c)	// we run post middlewares no matter the failure or status of the request, especially for logging purposes.
 	}
 }
 
