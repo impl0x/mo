@@ -67,21 +67,21 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ResponseHeaders: responseHeaders,
 		Mo:              m,
 	}
-	route, err := m.router.Find(strings.TrimSuffix(r.URL.Path,"/"), r.Method)
+	route, err := m.router.Find(c, strings.TrimSuffix(r.URL.Path, "/"), r.Method)
 	if err != nil {
 		m.HTTPErrorHandler(c, err) // either Method wrong or path Not found
 	} else {
 		h := route.Handler
-		for _, mi := range m.Middlewares {
-			h = mi(h)
+		for i := len(m.Middlewares) - 1; i >= 0; i-- {
+			h = m.Middlewares[i](h)
 		}
-		for _, mi := range route.Middlewares {
-			h = mi(h)
+		for i := len(route.Middlewares) - 1; i >= 0; i-- {
+			h = route.Middlewares[i](h)
 		}
 		m.HTTPErrorHandler(c, h(c))
 	}
-	for _, pmi := range m.PostMiddlewares {
-		pmi(c)	// we run post middlewares no matter the failure or status of the request, especially for logging purposes.
+	for i := len(m.PostMiddlewares) - 1; i >= 0; i-- {
+		m.PostMiddlewares[i](c) // we run post middlewares no matter the failure or status of the request, especially for logging purposes.
 	}
 }
 
