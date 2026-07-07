@@ -33,7 +33,7 @@ func DefaultConfig() *MoConfig {
 
 func New() *Mo {
 	return &Mo{
-		router:           NewBasicRouter(),
+		router:           NewRadixRouter(),
 		HTTPErrorHandler: DefaultHTTPErrorHandler(false),
 		Headers:          DefaultHeadersManager(),
 		Config:           DefaultConfig(),
@@ -66,12 +66,14 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		response:        newResponse(w, m.Headers),
 		ResponseHeaders: responseHeaders,
 		Mo:              m,
+		Store:           make(map[string]any),
+		params:          make(map[string]string),
 	}
 	route, err := m.router.Find(c, strings.TrimSuffix(r.URL.Path, "/"), r.Method)
 	if err != nil {
 		m.HTTPErrorHandler(c, err) // either Method wrong or path Not found
 	} else {
-		h := route.Handler
+		h := route.handler
 		for i := len(m.Middlewares) - 1; i >= 0; i-- {
 			h = m.Middlewares[i](h)
 		}

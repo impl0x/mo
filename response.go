@@ -46,6 +46,6 @@ func (r *Response) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-func (r *Response) StatusCode()int{
+func (r *Response) StatusCode() int {
 	return r.statusCode
 }

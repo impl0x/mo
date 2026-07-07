@@ -16,9 +16,9 @@ type routerConfig struct {
 var DefaultRouterConfig = routerConfig{true} // default config for the router
 
 type Route struct {
-	Path        string
-	Method      string
-	Handler     HandlerFunc
+	path        string
+	method      string
+	handler     HandlerFunc
 	Middlewares []Middleware // returns a copy of slice, don't mutate
 }
 
@@ -32,18 +32,18 @@ func NewBasicRouter() *BasicRouter {
 }
 
 func (r *BasicRouter) Add(ro *Route) {
-	if ro.Path[0] != '/' {
-		ro.Path = "/" + ro.Path
+	if ro.path[0] != '/' {
+		ro.path = "/" + ro.path
 	}
 	if DefaultRouterConfig.TrimSuffixSlashes {
-		ro.Path = strings.TrimSuffix(ro.Path, "/")
+		ro.path = strings.TrimSuffix(ro.path, "/")
 	}
 	r.Routes = append(r.Routes, ro)
 }
 func (r *BasicRouter) Find(_ *Context, path string, method string) (*Route, HttpErrorInterface) {
 	for _, v := range r.Routes {
-		if path == v.Path {
-			if method == v.Method {
+		if path == v.path {
+			if method == v.method {
 				return v, nil
 			}
 			return nil, ErrMethodNotAllowed
@@ -64,16 +64,12 @@ type methodHandlers struct {
 	delete  HandlerFunc
 }
 
-func createMhAndAdd(method string, handler HandlerFunc) methodHandlers {
-	mh := methodHandlers{}
-	mh.add(method, handler)
-	return mh
-}
 
 type node struct {
-	path     string
-	handlers methodHandlers
-	children []*node
+	path       string
+	handlers   methodHandlers
+	middleware []Middleware
+	children   []*node
 }
 
 type RadixRouter struct {
@@ -88,16 +84,15 @@ func NewRadixRouter() *RadixRouter {
 }
 
 func (rr *RadixRouter) cleanPathString(p string) string {
-	p = strings.TrimPrefix(p, "/")
 	if DefaultRouterConfig.TrimSuffixSlashes {
 		return strings.TrimSuffix(p, "/")
 	}
 	return p
 }
 
-func (rr *RadixRouter) Add(path string, method string, handler HandlerFunc) {
-	path = rr.cleanPathString(path)
-	parts := strings.Split(path, "/")
+func (rr *RadixRouter) Add(r *Route) {
+	r.path = rr.cleanPathString(r.path)
+	parts := strings.Split(r.path, "/")
 	Node := &rr.root
 
 Outer:
@@ -121,11 +116,11 @@ Outer:
 		Node = nn // as there was no child available we assign the current node to the new child we made
 	}
 	// We add the handlers to the deepest node.
-	Node.handlers.add(method, handler)
+	Node.handlers.add(r.method, r.handler)
 	// Note: if a user adds another handler for the same path and method then the previous one gets overwritten.
 }
 
-func (rr *RadixRouter) Find(c *Context, path string, method string) (HandlerFunc, error) {
+func (rr *RadixRouter) Find(c *Context, path string, method string) (*Route, HttpErrorInterface) {
 	path = rr.cleanPathString(path)
 	parts := strings.Split(path, "/")
 	Node := &rr.root
@@ -166,7 +161,7 @@ Outer:
 	if hn == nil {
 		return nil, ErrMethodNotAllowed // if there is no handler returned then we can assume its a wrong method
 	}
-	return hn, nil 
+	return &Route{Node.path,method, hn,Node.middleware}, nil
 }
 func (mh *methodHandlers) add(method string, handler HandlerFunc) {
 	switch method {
