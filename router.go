@@ -64,7 +64,6 @@ type methodHandlers struct {
 	delete  HandlerFunc
 }
 
-
 type node struct {
 	path       string
 	handlers   methodHandlers
@@ -161,7 +160,7 @@ Outer:
 	if hn == nil {
 		return nil, ErrMethodNotAllowed // if there is no handler returned then we can assume its a wrong method
 	}
-	return &Route{Node.path,method, hn,Node.middleware}, nil
+	return &Route{Node.path, method, hn, Node.middleware}, nil
 }
 func (mh *methodHandlers) add(method string, handler HandlerFunc) {
 	switch method {

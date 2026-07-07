@@ -4,7 +4,7 @@ func (m *Mo) Use(mi ...Middleware) {
 	m.Middlewares = append(m.Middlewares, mi...)
 }
 
-func (m *Mo) AddPostMiddleware(mi ...PostMiddleware){
+func (m *Mo) AddPostMiddleware(mi ...PostMiddleware) {
 	m.PostMiddlewares = append(m.PostMiddlewares, mi...)
 }
 

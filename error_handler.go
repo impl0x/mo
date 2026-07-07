@@ -20,7 +20,7 @@ type HTTPErrorHandler func(*Context, error)
 func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 	return func(c *Context, err error) {
 		if c.response.committed {
-			if err==nil{
+			if err == nil {
 				return
 			}
 			if c.Mo.Config.LogErrors {

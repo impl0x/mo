@@ -81,9 +81,9 @@ func (c *Context) QueryParams() url.Values {
 }
 
 // Returns the url parameter, ex: "users/:id", c.Param("id") will give the value for the
-func (c *Context) Param(key string)(string,bool){
-	v,ok:=c.params[key]
-	return v,ok
+func (c *Context) Param(key string) (string, bool) {
+	v, ok := c.params[key]
+	return v, ok
 }
 
 // ErrNonExistentKey is error that is returned when key does not exist

@@ -6,6 +6,7 @@ inspired heavily from Echo
 
 
 ## Features:
+- Compact Trie based router, has parameter and wildcard paths. (:id,*)
 - Single context which gives access to Request and ResponseWriter objects
 - Has middlewares for ratelimiting, 2 types as of now, token bucket algorithm and window counter
 - Has in built validator which validates structs
@@ -198,4 +199,4 @@ func handler(c *mo.Context) error {
 	c.DecodeBodyAndValidate(target) // decodes and validates the body
 }
 ```
-you can also validate it at the same place using the other  function.
+you can also validate it at the same place using the other function.

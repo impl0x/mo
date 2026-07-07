@@ -6,6 +6,6 @@ import (
 )
 
 func LoggerWithResponseCode(c *mo.Context) {
-	r:=c.Request()
-	reqlogger.RequestLog(r.RemoteAddr,r.Method,r.URL.Path, c.Response().StatusCode())
+	r := c.Request()
+	reqlogger.RequestLog(r.RemoteAddr, r.Method, r.URL.Path, c.Response().StatusCode())
 }
