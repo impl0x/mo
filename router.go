@@ -116,6 +116,8 @@ Outer:
 	}
 	// We add the handlers to the deepest node.
 	Node.handlers.add(r.method, r.handler)
+	// we also add the middlewares with it.
+	Node.middleware = append(Node.middleware, r.Middlewares...)
 	// Note: if a user adds another handler for the same path and method then the previous one gets overwritten.
 }
 
@@ -160,7 +162,7 @@ Outer:
 	if hn == nil {
 		return nil, ErrMethodNotAllowed // if there is no handler returned then we can assume its a wrong method
 	}
-	return &Route{Node.path, method, hn, Node.middleware}, nil
+	return &Route{path, method, hn, Node.middleware}, nil
 }
 func (mh *methodHandlers) add(method string, handler HandlerFunc) {
 	switch method {
