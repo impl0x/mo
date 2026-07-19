@@ -16,10 +16,10 @@ type routerConfig struct {
 var DefaultRouterConfig = routerConfig{true} // default config for the router
 
 type Route struct {
-	path        string
-	method      string
-	handler     HandlerFunc
-	Middlewares []Middleware // returns a copy of slice, don't mutate
+	Path        string	// the path for this route, read only do not mutate
+	Method      string	// the method for this route, read only do not mutate
+	Handler     HandlerFunc	// the handler which will be called, read only do not mutate
+	Middlewares []Middleware // returns a copy of slice, read only do not mutate, instead use the [Route.Use()] function
 }
 
 // o(n) and doesn't support dynamic routing
@@ -32,18 +32,18 @@ func NewBasicRouter() *BasicRouter {
 }
 
 func (r *BasicRouter) Add(ro *Route) {
-	if ro.path[0] != '/' {
-		ro.path = "/" + ro.path
+	if ro.Path[0] != '/' {
+		ro.Path = "/" + ro.Path
 	}
 	if DefaultRouterConfig.TrimSuffixSlashes {
-		ro.path = strings.TrimSuffix(ro.path, "/")
+		ro.Path = strings.TrimSuffix(ro.Path, "/")
 	}
 	r.Routes = append(r.Routes, ro)
 }
-func (r *BasicRouter) Find(_ *Context, path string, method string) (*Route, HttpErrorInterface) {
+func (r *BasicRouter) Find(_ *Context, path, method string) (*Route, HttpErrorInterface) {
 	for _, v := range r.Routes {
-		if path == v.path {
-			if method == v.method {
+		if path == v.Path {
+			if method == v.Method {
 				return v, nil
 			}
 			return nil, ErrMethodNotAllowed
@@ -90,8 +90,8 @@ func (rr *RadixRouter) cleanPathString(p string) string {
 }
 
 func (rr *RadixRouter) Add(r *Route) {
-	r.path = rr.cleanPathString(r.path)
-	parts := strings.Split(r.path, "/")
+	r.Path = rr.cleanPathString(r.Path)
+	parts := strings.Split(r.Path, "/")
 	Node := &rr.root
 
 Outer:
@@ -115,13 +115,13 @@ Outer:
 		Node = nn // as there was no child available we assign the current node to the new child we made
 	}
 	// We add the handlers to the deepest node.
-	Node.handlers.add(r.method, r.handler)
+	Node.handlers.add(r.Method, r.Handler)
 	// we also add the middlewares with it.
 	Node.middleware = append(Node.middleware, r.Middlewares...)
 	// Note: if a user adds another handler for the same path and method then the previous one gets overwritten.
 }
 
-func (rr *RadixRouter) Find(c *Context, path string, method string) (*Route, HttpErrorInterface) {
+func (rr *RadixRouter) Find(c *Context, path, method string) (*Route, HttpErrorInterface) {
 	path = rr.cleanPathString(path)
 	parts := strings.Split(path, "/")
 	Node := &rr.root

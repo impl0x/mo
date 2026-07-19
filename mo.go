@@ -2,7 +2,6 @@ package mo
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/impl0x/mo/modules/logger"
 )
@@ -69,11 +68,11 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Store:           make(map[string]any),
 		params:          make(map[string]string),
 	}
-	route, err := m.router.Find(c, strings.TrimSuffix(r.URL.Path, "/"), r.Method)
+	route, err := m.router.Find(c, r.URL.Path, r.Method)
 	if err != nil {
 		m.HTTPErrorHandler(c, err) // either Method wrong or path Not found
 	} else {
-		h := route.handler
+		h := route.Handler
 		for i := len(m.Middlewares) - 1; i >= 0; i-- {
 			h = m.Middlewares[i](h)
 		}
