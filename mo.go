@@ -16,7 +16,7 @@ type Mo struct {
 	Middlewares      []Middleware
 	PostMiddlewares  []PostMiddleware // runs after all the middlewares and handlers have been ran. used to logging or cleaning up, Don't use this to write to response or set status. This also runs when theres a routing error and no handler or middlewares run.
 	Headers          *HeadersManager  // Headers, sent in every request
-	Config           *MoConfig
+	Config           MoConfig
 }
 
 type MoConfig struct {
@@ -24,8 +24,8 @@ type MoConfig struct {
 	LogErrors     bool
 }
 
-func DefaultConfig() *MoConfig {
-	return &MoConfig{
+func DefaultConfig() MoConfig {
+	return MoConfig{
 		true, true,
 	}
 }
@@ -39,7 +39,7 @@ func New() *Mo {
 	}
 }
 
-func NewWithConfig(router Router, header *HeadersManager, errorHandler HTTPErrorHandler, config *MoConfig) *Mo {
+func NewWithConfig(router Router, header *HeadersManager, errorHandler HTTPErrorHandler, config MoConfig) *Mo {
 	return &Mo{
 		router:           router,
 		HTTPErrorHandler: errorHandler,
