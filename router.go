@@ -186,7 +186,7 @@ func (mh *methodHandlers) add(method string, handler HandlerFunc) {
 	mh.totalHandlers++
 	// well there is a possible overflow where if the user adds 256 handlers for the same path.... (the variable is of 8 bits)
 	// I mean there isn't 256 methods so he/she will just have to keep overwriting the handlers.
-	// and well if it overflows to 0 then it will return a 404 not found. just saying.
+	// and well if it overflows to 0 then it will return a 405 method not allowed. just saying.
 }
 
 // Returns the method from the string name.
