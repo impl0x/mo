@@ -48,18 +48,18 @@ type HttpError struct {
 }
 
 var (
-	ErrBadRequest                  = &HttpError{http.StatusBadRequest}            // 400
-	ErrUnauthorized                = &HttpError{http.StatusUnauthorized}          // 401
-	ErrForbidden                   = &HttpError{http.StatusForbidden}             // 403
-	ErrNotFound                    = &HttpError{http.StatusNotFound}              // 404
-	ErrMethodNotAllowed            = &HttpError{http.StatusMethodNotAllowed}      // 405
-	ErrRequestTimeout              = &HttpError{http.StatusRequestTimeout}        // 408
-	ErrStatusRequestEntityTooLarge = &HttpError{http.StatusRequestEntityTooLarge} // 413
-	ErrUnsupportedMediaType        = &HttpError{http.StatusUnsupportedMediaType}  // 415
-	ErrTooManyRequests             = &HttpError{http.StatusTooManyRequests}       // 429
-	ErrInternalServerError         = &HttpError{http.StatusInternalServerError}   // 500
-	ErrBadGateway                  = &HttpError{http.StatusBadGateway}            // 502
-	ErrServiceUnavailable          = &HttpError{http.StatusServiceUnavailable}    // 503
+	ErrBadRequest                  = HttpError{http.StatusBadRequest}            // 400
+	ErrUnauthorized                = HttpError{http.StatusUnauthorized}          // 401
+	ErrForbidden                   = HttpError{http.StatusForbidden}             // 403
+	ErrNotFound                    = HttpError{http.StatusNotFound}              // 404
+	ErrMethodNotAllowed            = HttpError{http.StatusMethodNotAllowed}      // 405
+	ErrRequestTimeout              = HttpError{http.StatusRequestTimeout}        // 408
+	ErrStatusRequestEntityTooLarge = HttpError{http.StatusRequestEntityTooLarge} // 413
+	ErrUnsupportedMediaType        = HttpError{http.StatusUnsupportedMediaType}  // 415
+	ErrTooManyRequests             = HttpError{http.StatusTooManyRequests}       // 429
+	ErrInternalServerError         = HttpError{http.StatusInternalServerError}   // 500
+	ErrBadGateway                  = HttpError{http.StatusBadGateway}            // 502
+	ErrServiceUnavailable          = HttpError{http.StatusServiceUnavailable}    // 503
 )
 
 func (he HttpError) StatusCode() int {
