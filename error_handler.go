@@ -30,7 +30,11 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 		}
 		switch e := err.(type) {
 		case HttpErrorInterface:
-			c.JSON(e.StatusCode(), e.JsonFormat())
+			err:=c.JSON(e.StatusCode(), e.JsonFormat())	// can throw error if user returns custom HTTP error where the jsonFormat function does not return a valid json.
+			if err!=nil{
+				c.JSON(ErrInternalServerError.Code, ErrInternalServerError.JsonFormat())
+				logger.Mo("Invalid HTTP error returned from handler!", "err", err.Error())
+			}
 		case *validator.GroupedValidationError:
 			c.JSON(http.StatusBadRequest, map[string]any{
 				"code":    http.StatusBadRequest,
@@ -57,10 +61,7 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 				})
 				return
 			}
-			resp := map[string]any{
-				"code":    http.StatusInternalServerError,
-				"message": http.StatusText(http.StatusInternalServerError),
-			}
+			resp := ErrInternalServerError.JsonFormat().(map[string]any) // safe type conversion because our HttpError method always returns a map[string]any
 			if exposeError {
 				resp["error"] = e.Error()
 				logger.Mo("Internal error: "+e.Error(), "errorType", fmt.Sprintf("%T", e))
