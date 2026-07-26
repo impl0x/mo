@@ -16,9 +16,9 @@ type routerConfig struct {
 var DefaultRouterConfig = routerConfig{true} // default config for the router
 
 type Route struct {
-	Path        string	// the path for this route, read only do not mutate
-	Method      string	// the method for this route, read only do not mutate
-	Handler     HandlerFunc	// the handler which will be called, read only do not mutate
+	Path        string       // the path for this route, read only do not mutate
+	Method      string       // the method for this route, read only do not mutate
+	Handler     HandlerFunc  // the handler which will be called, read only do not mutate
 	Middlewares []Middleware // returns a copy of slice, read only do not mutate, instead use the [Route.Use()] function
 }
 
