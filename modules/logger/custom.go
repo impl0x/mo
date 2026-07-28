@@ -31,7 +31,7 @@ var post = Level{
 }
 
 var patch = Level{
-	Color: Colors["purple"],
+	Color: Colors["magenta"],
 	Label: "PATCH",
 }
 
@@ -71,4 +71,14 @@ func Default(method string, v ...string) {
 		Label: strings.ToUpper(method)},
 		v,
 	)
+}
+
+var panic_ = Level{
+	Color: Colors["purple"],
+	Label: "PANIC",
+}
+
+// this does not panic. it just logs the string and the label is named panic
+func Panic(v ...string){
+	log(panic_,v)
 }
