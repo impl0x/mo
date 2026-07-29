@@ -30,6 +30,7 @@ func DefaultConfig() MoConfig {
 	}
 }
 
+// # Returns a new instance of Mo with the default configurations
 func New() *Mo {
 	return &Mo{
 		router:           NewRadixRouter(),
@@ -38,7 +39,16 @@ func New() *Mo {
 		Config:           DefaultConfig(),
 	}
 }
-
+// # Allows you to pass all the configuration that Mo uses on your own.
+// 
+// router: [RadixRouter] / [BasicRouter]
+// header: [HeadersManager]
+// errorHandler: [DefaultHTTPErrorHandler] / your own implementation. you can implement the [HTTPErrorHandler] function.
+// config: [MoConfig]
+//
+// Make sure to use the constructor functions and not pass in a raw struct directly, for example call NewRadixRouter and not pass in RadixRouter{} by yourself.
+//
+// although the compiler is satisfied do not pass in a uninitialized struct value, as most data structures need proper initial data to work.
 func NewWithConfig(router Router, header *HeadersManager, errorHandler HTTPErrorHandler, config MoConfig) *Mo {
 	return &Mo{
 		router:           router,
@@ -48,6 +58,7 @@ func NewWithConfig(router Router, header *HeadersManager, errorHandler HTTPError
 	}
 }
 
+// Starts listening on the address specified
 func (m *Mo) Start(addr string) error {
 	if m.Config.PrintStartMsg {
 		logger.Mo("Started Mo HTTP Server.")
