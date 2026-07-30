@@ -39,8 +39,9 @@ func New() *Mo {
 		Config:           DefaultConfig(),
 	}
 }
+
 // # Allows you to pass all the configuration that Mo uses on your own.
-// 
+//
 // router: [RadixRouter] / [BasicRouter]
 // header: [HeadersManager]
 // errorHandler: [DefaultHTTPErrorHandler] / your own implementation. you can implement the [HTTPErrorHandler] function.

@@ -30,8 +30,8 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 		}
 		switch e := err.(type) {
 		case HttpErrorInterface:
-			err:=c.JSON(e.StatusCode(), e.JsonFormat())	// can throw error if user returns custom HTTP error where the jsonFormat function does not return a valid json.
-			if err!=nil{
+			err := c.JSON(e.StatusCode(), e.JsonFormat()) // can throw error if user returns custom HTTP error where the jsonFormat function does not return a valid json.
+			if err != nil {
 				c.JSON(ErrInternalServerError.Code, ErrInternalServerError.JsonFormat())
 				logger.Mo("Invalid HTTP error returned from handler!", "err", err.Error())
 			}

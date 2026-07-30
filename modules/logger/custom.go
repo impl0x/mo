@@ -79,6 +79,6 @@ var panic_ = Level{
 }
 
 // this does not panic. it just logs the string and the label is named panic
-func Panic(v ...string){
-	log(panic_,v)
+func Panic(v ...string) {
+	log(panic_, v)
 }
