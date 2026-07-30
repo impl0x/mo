@@ -60,7 +60,7 @@ func (h *HeadersManager) SetMap(headers map[string]string) {
 	h.headers = headers
 }
 
-var ErrNotAStruct = errors.New("Cannot bind headers to a non struct object")
+var ErrNotAStruct = errors.New("cannot bind headers to a non struct object")
 
 // Binds a struct to set the headers globally for every request.
 // Must contain `header` tag and be exported.

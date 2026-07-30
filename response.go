@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-var ErrResponseAlreadyCommitted = errors.New("Headers already written")
+var ErrResponseAlreadyCommitted = errors.New("headers already written")
 
 type Response struct {
 	http.ResponseWriter
