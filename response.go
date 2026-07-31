@@ -15,19 +15,19 @@ type Response struct {
 	RequestSpecificHeaders *HeadersManager
 }
 
+// Returns a new Response struct with the default status code 200 OK
 func newResponse(w http.ResponseWriter, defaultHeaders *HeadersManager) *Response {
 	return &Response{
 		w,
 		false,
-		200,
+		http.StatusOK,
 		defaultHeaders,
 		DefaultHeadersManager(),
 	}
 }
 
-// we cache the statusCode and then send it on the first write call
+// we cache the statusCode and then send it on the first write call after writing all the headers.
 func (r *Response) WriteHeader(statusCode int) {
-
 	r.statusCode = statusCode
 }
 
@@ -42,7 +42,7 @@ func (r *Response) Write(b []byte) (int, error) {
 	r.RequestSpecificHeaders.writeHeaders(headers)
 
 	r.ResponseWriter.WriteHeader(r.statusCode)
-	r.committed = true
+	r.committed = true // we set committed to true to mark that the response has been written.
 	return r.ResponseWriter.Write(b)
 }
 
