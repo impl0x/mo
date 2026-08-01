@@ -116,7 +116,7 @@ func (ve *FieldValidateError) Field() string {
 //
 // ex: User.Age
 func (ve *FieldValidateError) Namespace() string {
-	fName := ve.f.t.Name
+	fName := ve.f.fieldName
 	if DefaultNameSpaceSettings.UseLowerCase {
 		fName = strings.ToLower(fName)
 	}

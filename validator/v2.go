@@ -58,6 +58,8 @@ type field struct {
 	kind reflect.Kind
 
 	rules []string
+
+	fieldName string
 }
 
 func (vd *validator) init(nested bool) ValidationError {
@@ -90,7 +92,7 @@ FieldLoop:
 			t: vd.rt.Field(i),
 		}
 		vd.f.kind = vd.f.v.Kind()
-
+		vd.f.fieldName = vd.f.t.Name
 		if vd.f.kind == reflect.Pointer {
 			vd.f.v = vd.f.v.Elem()
 		}
@@ -112,7 +114,7 @@ FieldLoop:
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
 				if ru == required { // i.e. if zero and required we append a error
-					vd.err.Append(NewFieldValidateError("required field not found "+vd.f.t.Name, "", vd.parent, vd.f))
+					vd.err.Append(NewFieldValidateError("required field not found "+vd.f.fieldName, "", vd.parent, vd.f))
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
@@ -121,13 +123,38 @@ FieldLoop:
 			}
 		}
 
-		for _, rule := range vd.f.rules { // loop over every rule and pass it to the handler
-			err := vd.handleNonEqRules(rule)
-			if err != nil {
-				vd.err.Append(err)
+		if slices.Contains(vd.f.rules, dive) {
+			if vd.f.kind != reflect.Slice && vd.f.kind != reflect.Array {
+				vd.err.Append(newUserError("dive can be only used on  slices and arrays"))
+				continue
 			}
+			cachedField := vd.f // we cache the current struct field
+			for i := range cachedField.v.Len() {
+				fv := cachedField.v.Index(i)
+				vd.f = field{ // we change the current working field to the index of the slice/array
+					v:         fv,
+					t:         vd.f.t,
+					kind:      fv.Kind(),
+					rules:     vd.f.rules,
+					fieldName: cachedField.fieldName + "." + strconv.Itoa(i),
+				}
+				loopHelper(vd)
+			}
+			vd.f = cachedField // reassign
+
+		} else {
+			loopHelper(vd)
 		}
 
+	}
+}
+
+func loopHelper(vd *validator) {
+	for _, rule := range vd.f.rules { // loop over every rule and pass it to the handler
+		err := vd.handleNonEqRules(rule)
+		if err != nil {
+			vd.err.Append(err)
+		}
 	}
 }
 
@@ -135,7 +162,8 @@ FieldLoop:
 func (vd *validator) handleNonEqRules(rule string) ValidationError {
 	var err ValidationError
 	switch rule { // written a theory at the end of this function to make this cleaner
-	case required: // we don't deal with required
+	case required: // we don't deal with required and dive
+	case dive:
 	case email:
 		err = emailRx.validate(vd)
 	case e164:
@@ -185,19 +213,19 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		} else if isCollection { // array, slice, string, map
 			err = vd.handleNumericComparison(rule, float64(vd.f.v.Len()), ruleValueStr, vd.f.kind.String()+" length")
 		} else { // unsupported
-			err = newUserError(fmt.Sprintf("the field must be either string, collection or numeric. field: %v", vd.f.t.Name))
+			err = newUserError(fmt.Sprintf("the field must be either string, collection or numeric. field: %v", vd.f.fieldName))
 		}
 	case len_:
 		ruleValue, e := strconv.Atoi(ruleValueStr)
 		if e != nil {
-			return newUserError(fmt.Sprintf("len tag value must be int. field: %v", vd.f.t.Name))
+			return newUserError(fmt.Sprintf("len tag value must be int. field: %v", vd.f.fieldName))
 		}
 		if isCollection {
 			if vd.f.v.Len() != ruleValue {
 				err = NewFieldValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
-			err = newUserError(fmt.Sprintf("the field must be either string or collection. field: %v", vd.f.t.Name))
+			err = newUserError(fmt.Sprintf("the field must be either string or collection. field: %v", vd.f.fieldName))
 		}
 	case oneof:
 		if vd.f.kind == reflect.String {
@@ -225,7 +253,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 			err = newUserError("endswith tag must be only used on a string field")
 		}
 	default:
-		err = newUserError(fmt.Sprintf("syntax error: Invalid tag value for field %v, rule: %v", vd.f.t.Name, rule))
+		err = newUserError(fmt.Sprintf("syntax error: Invalid tag value for field %v, rule: %v", vd.f.fieldName, rule))
 	}
 	return err
 }
@@ -233,7 +261,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 func (vd *validator) handleNumericComparison(rule string, value float64, ruleValueStr string, errorValueName string) ValidationError {
 	ruleValue, e := strconv.ParseFloat(ruleValueStr, 64)
 	if e != nil {
-		return newUserError(fmt.Sprintf("condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
+		return newUserError(fmt.Sprintf("condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.fieldName))
 	}
 	var errMsg string
 	switch rule {

@@ -27,6 +27,8 @@ const ( // these are all nonEq rules
 
 	ipv4 validatorRule = "ipv4"
 	ipv6 validatorRule = "ipv6"
+
+	dive validatorRule = "dive"
 )
 
 var emailRx = regexRule{
