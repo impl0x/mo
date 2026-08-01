@@ -10,13 +10,13 @@ import (
 var ReturnUserErrors bool     // change to true if you want validation User errors to be returned in the [GroupedValidationError].
 var LogUserErrors bool = true // logs the user errors.
 
-// It is either a [UserError] or a [ValidateError]
+// It is either a [UserError] or a [FieldValidateError]
 type ValidationError interface {
 	JsonFormat() map[string]any
 }
 
 type GroupedValidationError struct {
-	Errors []ValidationError
+	Errors []ValidationError	// you can type assert for [UserError] / [FieldValidateError], if ReturnUserErrors singleton bool is false then only FieldValidateError will be present.
 }
 
 func NewGroupedValidationError() *GroupedValidationError {
@@ -24,7 +24,7 @@ func NewGroupedValidationError() *GroupedValidationError {
 }
 
 func (gve *GroupedValidationError) Error() string {
-	return "Validation error"
+	return "Validation error, please loop over Errors to see each error."
 }
 
 func (gve *GroupedValidationError) Append(elems ...ValidationError) {
@@ -72,10 +72,10 @@ type FieldValidateError struct {
 	Message string
 	param   string
 	parent  string
-	f       *field
+	f       field
 }
 
-func NewFieldValidateError(msg, param, parent string, field *field) *FieldValidateError {
+func NewFieldValidateError(msg, param, parent string, field field) *FieldValidateError {
 	return &FieldValidateError{
 		msg, param, parent, field,
 	}
@@ -103,6 +103,7 @@ func (ve *FieldValidateError) Tag() string {
 //
 // ex: Age
 func (ve *FieldValidateError) Field() string {
+	
 	return ve.f.t.Name
 }
 

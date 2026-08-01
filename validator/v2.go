@@ -98,7 +98,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(validate(newValidator(vd.f.v.Interface(), vd.parent), true).Errors...) // TODO: make a nested error
+			vd.err.Append(validate(newValidator(vd.f.v.Interface(), vd.parent), true).Errors...)
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
@@ -112,7 +112,7 @@ FieldLoop:
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
 				if ru == required { // i.e. if zero and required we append a error
-					vd.err.Append(NewFieldValidateError("Required field not found", "", vd.parent, &vd.f))
+					vd.err.Append(NewFieldValidateError("required field not found "+vd.f.t.Name, "", vd.parent, vd.f))
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
@@ -134,27 +134,26 @@ FieldLoop:
 // handles the rules without a equal-to sign, required, email, etc.
 func (vd *validator) handleNonEqRules(rule string) ValidationError {
 	var err ValidationError
-	v := vd.f.v.Interface()
 	switch rule { // written a theory at the end of this function to make this cleaner
 	case required: // we don't deal with required
 	case email:
-		err = emailRx.validate(vd, v)
+		err = emailRx.validate(vd)
 	case e164:
-		err = e164Rx.validate(vd, v)
+		err = e164Rx.validate(vd)
 	case url:
-		err = urlRx.validate(vd, v)
+		err = urlRx.validate(vd)
 	case uuid:
-		err = uuidRx.validate(vd, v)
+		err = uuidRx.validate(vd)
 	case alpha:
-		err = alphaRx.validate(vd, v)
+		err = alphaRx.validate(vd)
 	case alphanum:
-		err = alphanumRx.validate(vd, v)
+		err = alphanumRx.validate(vd)
 	case numeric:
-		err = numericRx.validate(vd, v)
+		err = numericRx.validate(vd)
 	case ipv4:
-		err = ipv4Rx.validate(vd, v)
+		err = ipv4Rx.validate(vd)
 	case ipv6:
-		err = ipv6Rx.validate(vd, v)
+		err = ipv6Rx.validate(vd)
 	default: // eqRules here, min,max,lte,gte,etc.
 		err = vd.handleEqRules(rule) // rule: min=2
 	}
@@ -172,20 +171,21 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	var isCollection = vd.f.kind == reflect.Slice || vd.f.kind == reflect.Array || vd.f.kind == reflect.Map || vd.f.kind == reflect.String
 	split := strings.Split(eqRule, "=")
 	if len(split) != 2 {
-		return newUserError("Syntax error for tag")
+		return newUserError("syntax error for tag")
 	}
 	rule := split[0]
+	// println(rule)
 	ruleValueStr := split[1]
 	var err ValidationError
 	switch rule {
-	case min_, max_, gte, lte:
+	case min_, max_, gte, lte, lt, gt:
 		// type checking for the field value here
-		if slices.Contains(NumTypes, vd.f.kind) { // checking numTypes, int,uint,float,etc.
+		if slices.Contains(NumTypes, vd.f.kind) { // checking numTypes, int, uint, float,etc.
 			err = vd.handleNumericComparison(rule, vd.f.v.Convert(reflect.TypeFor[float64]()).Float(), ruleValueStr, "Field value")
-		} else if isCollection { // array, slice, string
+		} else if isCollection { // array, slice, string, map
 			err = vd.handleNumericComparison(rule, float64(vd.f.v.Len()), ruleValueStr, vd.f.kind.String()+" length")
 		} else { // unsupported
-			err = newUserError(fmt.Sprintf("The field must be either string, collection or numeric. field: %v", vd.f.t.Name))
+			err = newUserError(fmt.Sprintf("the field must be either string, collection or numeric. field: %v", vd.f.t.Name))
 		}
 	case len_:
 		ruleValue, e := strconv.Atoi(ruleValueStr)
@@ -194,23 +194,38 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		}
 		if isCollection {
 			if vd.f.v.Len() != ruleValue {
-				err = NewFieldValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, ruleValueStr, vd.parent, &vd.f)
+				err = NewFieldValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
-			err = newUserError(fmt.Sprintf("The field must be either string or collection. field: %v", vd.f.t.Name))
+			err = newUserError(fmt.Sprintf("the field must be either string or collection. field: %v", vd.f.t.Name))
 		}
 	case oneof:
 		if vd.f.kind == reflect.String {
 			ruleValues := strings.Split(ruleValueStr, " ")
 			if !slices.Contains(ruleValues, vd.f.v.String()) {
-				err = NewFieldValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), ruleValueStr, vd.parent, &vd.f)
+				err = NewFieldValidateError(fmt.Sprintf("value must be either one of %v", strings.Join(ruleValues, ", ")), ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
 			err = newUserError("oneof tag must only be used on a string field")
 		}
-
-	default: // do oneof and len
-		err = newUserError(fmt.Sprintf("Syntax error: Invalid tag value for field %v, rule: %v", vd.f.t.Name, rule))
+	case startswith:
+		if vd.f.kind == reflect.String {
+			if !strings.HasPrefix(vd.f.v.String(), ruleValueStr) {
+				err = NewFieldValidateError("value must start with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
+			}
+		} else {
+			err = newUserError("startswith tag must be only used on a string field")
+		}
+	case endswith:
+		if vd.f.kind == reflect.String {
+			if !strings.HasSuffix(vd.f.v.String(), ruleValueStr) {
+				err = NewFieldValidateError("value must end with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
+			}
+		} else {
+			err = newUserError("endswith tag must be only used on a string field")
+		}
+	default:
+		err = newUserError(fmt.Sprintf("syntax error: Invalid tag value for field %v, rule: %v", vd.f.t.Name, rule))
 	}
 	return err
 }
@@ -218,17 +233,29 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 func (vd *validator) handleNumericComparison(rule string, value float64, ruleValueStr string, errorValueName string) ValidationError {
 	ruleValue, e := strconv.ParseFloat(ruleValueStr, 64)
 	if e != nil {
-		return newUserError(fmt.Sprintf("Condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
+		return newUserError(fmt.Sprintf("condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64. field: %v", vd.f.t.Name))
 	}
+	var errMsg string
 	switch rule {
 	case min_, gte:
 		if value < ruleValue {
-			return NewFieldValidateError(fmt.Sprintf("%v must be more than %v", errorValueName, ruleValue), ruleValueStr, vd.parent, &vd.f)
+			errMsg = fmt.Sprintf("%v must be more than or equal to %v", errorValueName, ruleValue)
 		}
 	case max_, lte:
 		if value > ruleValue {
-			return NewFieldValidateError(fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue), ruleValueStr, vd.parent, &vd.f)
+			errMsg = fmt.Sprintf("%v must be less than or equal to %v", errorValueName, ruleValue)
 		}
+	case gt:
+		if value <= ruleValue {
+			errMsg = fmt.Sprintf("%v must be greater than %v", errorValueName, ruleValue)
+		}
+	case lt:
+		if value >= ruleValue {
+			errMsg = fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue)
+		}
+	}
+	if errMsg != "" {
+		return NewFieldValidateError(errMsg, ruleValueStr, vd.parent, vd.f)
 	}
 	return nil
 }

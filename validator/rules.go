@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
 )
@@ -70,23 +71,27 @@ var ipv6Rx = regexRule{
 	regexp.MustCompile(`^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$`),
 }
 
-func (r *regexRule) validate(vd *validator, v any) ValidationError {
+func (r *regexRule) validate(vd *validator) ValidationError {
 	if vd.f.kind != reflect.String {
-		return newUserError("Cannot validate \"email\" rule against a " + vd.f.kind.String())
+		return newUserError(fmt.Sprintf("cannot validate \"%s\" rule against a %s", r.name, vd.f.kind.String()))
 	}
-	if !r.regEx.MatchString(v.(string)) {
-		return NewFieldValidateError("Not a valid "+r.name, "", vd.parent, &vd.f)
+	if !r.regEx.MatchString(vd.f.v.String()) {
+		return NewFieldValidateError("not a valid "+r.name, "", vd.parent, vd.f)
 	}
 	return nil
 }
 
 // the eq rules, i.e. requires a equal to sign
 const (
-	_     validatorRule = ``      // type this will work on | type of rule value
-	min_  validatorRule = "min"   // string | collection | numeric		float64		the maximum type it "can" be, a min value can also contain min=1.52
-	lte   validatorRule = "lte"   // string | collection | numeric		float64
-	max_  validatorRule = "max"   // string | collection | numeric 		float64
-	gte   validatorRule = "gte"   // string | collection | numeric 		float64
-	len_  validatorRule = "len"   // string | collection				int
-	oneof validatorRule = "oneof" // string					  			[]string
+	_          validatorRule = ``           // type this will work on 			 	type of rule value
+	min_       validatorRule = "min"        // string | collection | numeric		float64		? the largest type it "can" be, a min value can also contain min=1.52
+	lte        validatorRule = "lte"        // string | collection | numeric		float64
+	lt         validatorRule = "lt"         // string | collection | numeric 		float64
+	max_       validatorRule = "max"        // string | collection | numeric 		float64
+	gte        validatorRule = "gte"        // string | collection | numeric 		float64
+	gt         validatorRule = "gt"         // string | collection | numeric 		float64
+	len_       validatorRule = "len"        // string | collection					int
+	oneof      validatorRule = "oneof"      // string					  			[]string
+	startswith validatorRule = "startswith" // string								string
+	endswith   validatorRule = "endswith"   // string 								string
 )
