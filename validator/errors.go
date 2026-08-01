@@ -7,8 +7,13 @@ import (
 	"github.com/impl0x/mo/modules/logger"
 )
 
-var ReturnUserErrors bool     // change to true if you want validation User errors to be returned in the [GroupedValidationError].
-var LogUserErrors bool = true // logs the user errors.
+type errorConfig struct {
+	ReturnUserErrors, // change to true if you want validation User errors to be returned in the [GroupedValidationError].
+	LogUserErrors bool // logs the user errors.
+}
+
+// Config for some error settings
+var ErrorConfig = errorConfig{false, true}
 
 // It is either a [UserError] or a [FieldValidateError]
 type ValidationError interface {
@@ -16,7 +21,7 @@ type ValidationError interface {
 }
 
 type GroupedValidationError struct {
-	Errors []ValidationError	// you can type assert for [UserError] / [FieldValidateError], if ReturnUserErrors singleton bool is false then only FieldValidateError will be present.
+	Errors []ValidationError // you can type assert for [UserError] / [FieldValidateError], if ReturnUserErrors singleton bool is false then only FieldValidateError will be present.
 }
 
 func NewGroupedValidationError() *GroupedValidationError {
@@ -35,10 +40,10 @@ func (gve *GroupedValidationError) JsonFormat() []map[string]any {
 	jsonList := make([]map[string]any, 0, len(gve.Errors))
 	for _, err := range gve.Errors {
 		if e, ok := err.(*UserError); ok {
-			if LogUserErrors {
+			if ErrorConfig.LogUserErrors {
 				logger.Validator(e.Error())
 			}
-			if !ReturnUserErrors {
+			if !ErrorConfig.ReturnUserErrors {
 				continue
 			}
 		}
@@ -103,7 +108,7 @@ func (ve *FieldValidateError) Tag() string {
 //
 // ex: Age
 func (ve *FieldValidateError) Field() string {
-	
+
 	return ve.f.t.Name
 }
 
