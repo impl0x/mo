@@ -30,3 +30,22 @@ func (g *Grouped) OPTIONS(path string, handler HandlerFunc, mi ...Middleware) *R
 func (g *Grouped) DELETE(path string, handler HandlerFunc, mi ...Middleware) *Route {
 	return g.add(path, http.MethodDelete, handler, mi)
 }
+
+// Used to group several paths together.
+//
+// example:
+//
+//	m := mo.New() // new instance
+//	v1Group := m.Group("/api/v1") 		// creates a new group for paths starting with /api/v1.
+//	authGroup := v1Group.Group("/auth")	// same as above but for /auth, /api/v1/auth in total.
+//	authGroup.POST("/login", loginHandler) 	// registers a path finally for POST /api/v1/auth/login.
+//	m.Start(":8080") // starts the server
+//
+// Add middlewares using "Use" before registering paths
+func (g *Grouped) Group(prefix string, mi ...Middleware) *Grouped {
+	return &Grouped{
+		prefix:      g.prefix+prefix,
+		Middlewares: append(g.Middlewares, mi...),
+		m:           g.m,
+	}
+}
