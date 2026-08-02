@@ -15,7 +15,7 @@ type Mo struct {
 	HTTPErrorHandler HTTPErrorHandler // Error handler must also handle nil, because every handler return is at the end handed over to the errorHandler even if its a nil
 	Middlewares      []Middleware
 	PostMiddlewares  []PostMiddleware // runs after all the middlewares and handlers have been ran. used to logging or cleaning up, Don't use this to write to response or set status. This also runs when theres a routing error and no handler or middlewares run.
-	Headers          *HeadersManager  // Headers, sent in every request
+	Headers          HeadersManager   // Headers, sent in every request
 	Config           MoConfig
 }
 
@@ -50,7 +50,7 @@ func New() *Mo {
 // Make sure to use the constructor functions and not pass in a raw struct directly, for example call NewRadixRouter and not pass in RadixRouter{} by yourself.
 //
 // although the compiler is satisfied do not pass in a uninitialized struct value, as most data structures need proper initial data to work.
-func NewWithConfig(router Router, header *HeadersManager, errorHandler HTTPErrorHandler, config MoConfig) *Mo {
+func NewWithConfig(router Router, header HeadersManager, errorHandler HTTPErrorHandler, config MoConfig) *Mo {
 	return &Mo{
 		router:           router,
 		HTTPErrorHandler: errorHandler,
@@ -71,15 +71,15 @@ func (m *Mo) Start(addr string) error {
 //
 // r -> global middlewares -> route middlewares -> handler -> error handler -> post middlewares -x-
 func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	responseHeaders := DefaultHeadersManager()
-	c := &Context{
-		request:         r,
-		response:        newResponse(w, m.Headers),
-		ResponseHeaders: responseHeaders,
-		Mo:              m,
-		Store:           make(map[string]any),
-		params:          make(map[string]string),
-	}
+	// Acquire a context from the pool and initialize with values
+	c := ContextPool.Get().(*Context)
+	c.request = r
+	c.response = newResponse(w, &m.Headers)
+	c.ResponseHeaders = DefaultHeadersManager()
+	c.Mo = m
+	c.Store = make(map[string]any)
+	c.params = make(map[string]string)
+
 	route, err := m.router.Find(c, r.URL.Path, r.Method)
 	if err != nil {
 		m.HTTPErrorHandler(c, err) // either Method wrong or path Not found
@@ -96,6 +96,8 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for i := len(m.PostMiddlewares) - 1; i >= 0; i-- {
 		m.PostMiddlewares[i](c) // we run post middlewares no matter the failure or status of the request, especially for logging purposes.
 	}
+	// we do not bother cleaning the state because Get just overwrites the state.
+	ContextPool.Put(c)
 }
 
 func (m *Mo) add(path string, method string, handler HandlerFunc, mi []Middleware) *Route {

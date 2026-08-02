@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
-	"sync"
 )
 
 type headersConfig struct {
@@ -27,36 +26,31 @@ func (hc *headersConfig) writeHeaders(headers http.Header) {
 }
 
 // This is used to manage the headers, like adding, binding, setting, etc.
+//
+// Remember this is *NOT* goroutine safe, use your own mutexes if you are changing global headers in request handlers.
 type HeadersManager struct {
 	headers map[string]string
-	mu      sync.RWMutex
 }
 
-func DefaultHeadersManager() *HeadersManager {
-	return &HeadersManager{
+func DefaultHeadersManager() HeadersManager {
+	return HeadersManager{
 		headers: make(map[string]string),
 	}
 }
 
 // Adds a header using key and value
 func (h *HeadersManager) Add(key, value string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
 	h.headers[key] = value
 }
 
 // Gets a header value from the key
 func (h *HeadersManager) Get(key string) (value string, ok bool) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
 	value, ok = h.headers[key]
 	return
 }
 
 // Sets the map to be the headers, faster alternative than binding a struct
 func (h *HeadersManager) SetMap(headers map[string]string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
 	h.headers = headers
 }
 

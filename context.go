@@ -6,15 +6,21 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"sync"
 
 	"github.com/impl0x/mo/modules/logger"
 	"github.com/impl0x/mo/validator"
 )
 
+var ContextPool = sync.Pool{
+	New: func() any {return new(Context)},
+}
+
+
 type Context struct {
 	request         *http.Request
-	response        *Response
-	ResponseHeaders *HeadersManager // Sends headers with the response for this request
+	response        Response
+	ResponseHeaders HeadersManager // Sends headers with the response for this request
 	Mo              *Mo             // original Mo instance
 	Store           map[string]any  // stores context values
 	params          map[string]string
@@ -32,7 +38,7 @@ func (c *Context) Request() *http.Request {
 }
 
 func (c *Context) Response() *Response {
-	return c.response
+	return &c.response
 }
 
 // Redirect redirects the request to a provided URL with status code.
@@ -68,7 +74,7 @@ func (c *Context) Blob(code int, contentType string, b []byte) error {
 func (c *Context) JSON(code int, target any) error {
 	c.writeContentType(MIMEApplicationJSON)
 	c.response.WriteHeader(code)
-	return json.NewEncoder(c.response).Encode(target)
+	return json.NewEncoder(&c.response).Encode(target)
 }
 
 func (c *Context) TEXT(code int, body string) error {
