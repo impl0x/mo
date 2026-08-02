@@ -12,7 +12,7 @@ import (
 	"github.com/impl0x/mo/validator"
 )
 
-var ContextPool = sync.Pool{
+var contextPool = sync.Pool{
 	New: func() any {return new(Context)},
 }
 

@@ -49,8 +49,12 @@ type NameSpaceSettings struct {
 	UseParentDotSyntax bool // true: User.Age, false: Age
 	UseRootStructName  bool // true: User.Address.City, false: Address.City
 }
-
-var DefaultNameSpaceSettings = NameSpaceSettings{true, true, false} // do not mutate while running, only mutate at the start because this is a global variable
+// Read [NameSpaceSettings] for explanations
+//
+// do not mutate while running, only mutate at the start because this is a global variable
+//
+// else manage your own mutex
+var DefaultNameSpaceSettings = NameSpaceSettings{true, true, false} 
 
 type field struct {
 	v    reflect.Value

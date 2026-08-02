@@ -72,7 +72,7 @@ func (m *Mo) Start(addr string) error {
 // r -> global middlewares -> route middlewares -> handler -> error handler -> post middlewares -x-
 func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Acquire a context from the pool and initialize with values
-	c := ContextPool.Get().(*Context)
+	c := contextPool.Get().(*Context)
 	c.request = r
 	c.response = newResponse(w, &m.Headers)
 	c.ResponseHeaders = DefaultHeadersManager()
@@ -85,19 +85,19 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m.HTTPErrorHandler(c, err) // either Method wrong or path Not found
 	} else {
 		h := route.Handler
-		for i := len(m.Middlewares) - 1; i >= 0; i-- {
+		for i := len(m.Middlewares) - 1; i >= 0; i-- { // wrapping with global middlewares
 			h = m.Middlewares[i](h)
 		}
-		for i := len(route.Middlewares) - 1; i >= 0; i-- {
+		for i := len(route.Middlewares) - 1; i >= 0; i-- { // wrapping with route specific middlewares
 			h = route.Middlewares[i](h)
 		}
-		m.HTTPErrorHandler(c, h(c))
+		m.HTTPErrorHandler(c, h(c)) // finally we run the handler and pass the result to the error handler
 	}
-	for i := len(m.PostMiddlewares) - 1; i >= 0; i-- {
+	for i := len(m.PostMiddlewares) - 1; i >= 0; i-- { // running all the post middlewares
 		m.PostMiddlewares[i](c) // we run post middlewares no matter the failure or status of the request, especially for logging purposes.
 	}
 	// we do not bother cleaning the state because Get just overwrites the state.
-	ContextPool.Put(c)
+	contextPool.Put(c)
 }
 
 func (m *Mo) add(path string, method string, handler HandlerFunc, mi []Middleware) *Route {
@@ -128,6 +128,16 @@ func (m *Mo) HEAD(path string, handler HandlerFunc, mi ...Middleware) *Route {
 	return m.add(path, http.MethodHead, handler, mi)
 }
 
+// Used to group several paths together.
+//
+// example:
+//
+//	m := mo.New() // new instance
+//	v1Group := m.Group("/api/v1") 		// creates a new group for paths starting with /api/v1.
+//	authGroup := v1Group.Group("/auth")	// same as above but for /auth, /api/v1/auth in total.
+//	authGroup.POST("/login", loginHandler) 	// registers a path finally for POST /api/v1/auth/login.
+//	m.Start(":8080") // starts the server
+//
 // Add middlewares using "Use" before registering paths
 func (m *Mo) Group(prefix string, mi ...Middleware) *Grouped {
 	return &Grouped{
