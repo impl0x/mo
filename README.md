@@ -254,3 +254,8 @@ func handler(c *mo.Context) error {
 }
 ```
 you can also validate it at the same place using the other function.
+
+# 
+Thats it, If you find any bugs please raise an issue. And if there are any suggestions please reach out to me via gmail in my profile.  
+Thank you  
+*~ Impl0x*
