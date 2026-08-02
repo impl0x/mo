@@ -122,7 +122,7 @@ FieldLoop:
 				}
 			}
 		}
-
+		// handles dive here
 		if slices.Contains(vd.f.rules, dive) {
 			if vd.f.kind != reflect.Slice && vd.f.kind != reflect.Array {
 				vd.err.Append(newUserError("dive can be only used on  slices and arrays"))
@@ -162,8 +162,8 @@ func loopHelper(vd *validator) {
 func (vd *validator) handleNonEqRules(rule string) ValidationError {
 	var err ValidationError
 	switch rule { // written a theory at the end of this function to make this cleaner
-	case required: // we don't deal with required and dive
-	case dive:
+	case required: // we handled it before. so no need of it here
+	case dive:  // we handled it before calling this function
 	case email:
 		err = emailRx.validate(vd)
 	case e164:
