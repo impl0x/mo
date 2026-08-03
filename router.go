@@ -1,6 +1,7 @@
 package mo
 
 import (
+	"net/http"
 	"strings"
 )
 
@@ -89,6 +90,7 @@ func (rr *RadixRouter) cleanPathString(p string) string {
 	return p
 }
 
+// Adds a path to the router
 func (rr *RadixRouter) Add(r *Route) {
 	r.Path = rr.cleanPathString(r.Path)
 	parts := strings.Split(r.Path, "/")
@@ -121,6 +123,9 @@ Outer:
 	// Note: if a user adds another handler for the same path and method then the previous one gets overwritten.
 }
 
+// Finds a path from the path and method given, returns a [HttpErrorInterface] if not found or wrong method
+//
+// The returned Route instance is a read only value, do not write to it and expect changes.
 func (rr *RadixRouter) Find(c *Context, path, method string) (*Route, HttpErrorInterface) {
 	path = rr.cleanPathString(path)
 	parts := strings.Split(path, "/")
@@ -164,21 +169,22 @@ Outer:
 	}
 	return &Route{path, method, hn, Node.middleware}, nil
 }
+
 func (mh *methodHandlers) add(method string, handler HandlerFunc) {
 	switch method {
-	case "GET":
+	case http.MethodGet:
 		mh.get = handler
-	case "POST":
+	case http.MethodPost:
 		mh.post = handler
-	case "PUT":
+	case http.MethodPut:
 		mh.put = handler
-	case "PATCH":
+	case http.MethodPatch:
 		mh.patch = handler
-	case "DELETE":
+	case http.MethodDelete:
 		mh.delete = handler
-	case "OPTIONS":
+	case http.MethodOptions:
 		mh.options = handler
-	case "HEAD":
+	case http.MethodHead:
 		mh.head = handler
 	default:
 		return
@@ -190,23 +196,21 @@ func (mh *methodHandlers) add(method string, handler HandlerFunc) {
 }
 
 // Returns the method from the string name.
-// As the method string is usually passed from the http package containing the const names for methods,
-// we check the capitalized versions.
 func (mh *methodHandlers) fromString(method string) HandlerFunc {
 	switch method {
-	case "GET":
+	case http.MethodGet:
 		return mh.get
-	case "POST":
+	case http.MethodPost:
 		return mh.post
-	case "PUT":
+	case http.MethodPut:
 		return mh.put
-	case "PATCH":
+	case http.MethodPatch:
 		return mh.patch
-	case "DELETE":
+	case http.MethodDelete:
 		return mh.delete
-	case "OPTIONS":
+	case http.MethodOptions:
 		return mh.options
-	case "HEAD":
+	case http.MethodHead:
 		return mh.head
 	default:
 		return nil // doesn't matter if it gets triggered it just gives a 405 Incorrect method.
