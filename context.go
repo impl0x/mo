@@ -13,16 +13,20 @@ import (
 )
 
 var contextPool = sync.Pool{
-	New: func() any {return new(Context)},
+	New: func() any {
+		return Context{
+			Store:  make(map[string]any),
+			params: make(map[string]string),
+		}
+	},
 }
-
 
 type Context struct {
 	request         *http.Request
 	response        Response
 	ResponseHeaders HeadersManager // Sends headers with the response for this request
-	Mo              *Mo             // original Mo instance
-	Store           map[string]any  // stores context values
+	Mo              *Mo            // original Mo instance
+	Store           map[string]any // stores context values
 	params          map[string]string
 }
 
