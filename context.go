@@ -14,7 +14,7 @@ import (
 
 var contextPool = sync.Pool{
 	New: func() any {
-		return Context{
+		return &Context{
 			Store:  make(map[string]any),
 			params: make(map[string]string),
 		}
