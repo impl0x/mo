@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"fmt"
+	"net/http"
 	"runtime/debug"
 
 	"github.com/impl0x/mo"
@@ -18,7 +19,7 @@ func Recover(logError bool) mo.Middleware {
 						logger.Panic(fmt.Sprintf("%v", err))
 						println("[STACK TRACE]\n" + string(debug.Stack()))
 					}
-					c.JSON(500, mo.ErrInternalServerError.JsonFormat())
+					c.JSON(http.StatusInternalServerError, mo.ErrInternalServerError)
 				}
 			}()
 			return next(c)

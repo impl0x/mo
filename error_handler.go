@@ -12,6 +12,15 @@ import (
 // Error Handler must handle nil, HttpErrorInterface and error. (internal)
 type HTTPErrorHandler func(*Context, error)
 
+type internalErrorJson struct {
+	HTTPError
+	Error string `json:"error,omitempty"`
+}
+type validationErrorJson struct {
+	HttpError
+	Errors []validator.ValidationErrorJson `json:"errors,omitempty"`
+}
+
 // if err==nil, returns
 // if response already committed (headers written), returns and logs
 // if error is of type HttpErrorInterface, calls c.Json() with e.StatusCode() and e.JsonFormat()
@@ -29,41 +38,33 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			return
 		}
 		switch e := err.(type) {
-		case HttpErrorInterface:
-			err := c.JSON(e.StatusCode(), e.JsonFormat()) // can throw error if user returns custom HTTP error where the jsonFormat function does not return a valid json.
-			if err != nil {
-				c.JSON(ErrInternalServerError.Code, ErrInternalServerError.JsonFormat())
-				logger.Mo("Invalid HTTP error returned from handler!", "err", err.Error())
-			}
+		case HTTPError:
+			c.JSON(e.StatusCode(), e)
 		case *validator.GroupedValidationError:
-			c.JSON(http.StatusBadRequest, map[string]any{
-				"code":    http.StatusBadRequest,
-				"message": "Validation error",
-				"errors":  e.JsonFormat(),
-			})
+			c.JSON(http.StatusBadRequest, validationErrorJson{HttpError: ErrBadRequest, Errors: e.ToJsonStructList()})
 		case *json.SyntaxError:
-			c.JSON(http.StatusUnprocessableEntity, map[string]any{
-				"code":    http.StatusUnprocessableEntity,
-				"message": fmt.Sprintf("JSON syntax error at offset %d", e.Offset),
+			c.JSON(http.StatusUnprocessableEntity, HttpError{
+				Code:    http.StatusUnprocessableEntity,
+				Message: fmt.Sprintf("JSON syntax error at offset %d", e.Offset),
 			})
 		case *json.UnmarshalTypeError:
-			c.JSON(http.StatusExpectationFailed, map[string]any{
-				"code":    http.StatusExpectationFailed,
-				"message": fmt.Sprintf("Wrong type used for field %s", e.Field),
+			c.JSON(http.StatusExpectationFailed, HttpError{
+				Code:    http.StatusExpectationFailed,
+				Message: fmt.Sprintf("Wrong type used for field %s", e.Field),
 			})
 		case nil:
 			c.NoContent(http.StatusNoContent)
 		default:
 			if e.Error() == "EOF" { // rare case because json parsing returns a errorString of EOF when a body is empty.
-				c.JSON(http.StatusUnprocessableEntity, map[string]any{
-					"code":    http.StatusUnprocessableEntity,
-					"message": "EOF",
+				c.JSON(http.StatusUnprocessableEntity, HttpError{
+					Code:    http.StatusUnprocessableEntity,
+					Message: "EOF",
 				})
 				return
 			}
-			resp := ErrInternalServerError.JsonFormat().(map[string]any) // safe type conversion because our HttpError method always returns a map[string]any
+			resp := internalErrorJson{HTTPError: ErrInternalServerError}
 			if exposeError {
-				resp["error"] = e.Error()
+				resp.Error = e.Error()
 				logger.Mo("Internal error: "+e.Error(), "errorType", fmt.Sprintf("%T", e))
 			}
 			c.JSON(http.StatusInternalServerError, resp)

@@ -6,7 +6,7 @@ import (
 )
 
 type Router interface {
-	Find(c *Context, path string, method string) (*Route, HttpErrorInterface) // finds the route, takes path, method
+	Find(c *Context, path string, method string) (*Route, HTTPError) // finds the route, takes path, method
 	Add(*Route)                                                               // adds a route
 }
 
@@ -41,7 +41,7 @@ func (r *BasicRouter) Add(ro *Route) {
 	}
 	r.Routes = append(r.Routes, ro)
 }
-func (r *BasicRouter) Find(_ *Context, path, method string) (*Route, HttpErrorInterface) {
+func (r *BasicRouter) Find(_ *Context, path, method string) (*Route, HTTPError) {
 	for _, v := range r.Routes {
 		if path == v.Path {
 			if method == v.Method {
@@ -123,10 +123,10 @@ Outer:
 	// Note: if a user adds another handler for the same path and method then the previous one gets overwritten.
 }
 
-// Finds a path from the path and method given, returns a [HttpErrorInterface] if not found or wrong method
+// Finds a path from the path and method given, returns a [HTTPError] if not found or wrong method
 //
 // The returned Route instance is a read only value, do not write to it and expect changes.
-func (rr *RadixRouter) Find(c *Context, path, method string) (*Route, HttpErrorInterface) {
+func (rr *RadixRouter) Find(c *Context, path, method string) (*Route, HTTPError) {
 	path = rr.cleanPathString(path)
 	parts := strings.Split(path, "/")
 	Node := &rr.root

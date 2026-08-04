@@ -5,75 +5,48 @@ import (
 	"net/http"
 )
 
-type HttpErrorInterface interface {
+// If you are implementing this interface and using the default http error handler then 
+// make sure that the struct is json compatible because its going to be sent directly to the json encoder
+type HTTPError interface {
 	StatusCode() int
-	JsonFormat() any
 	error
 }
 
-// To return a custom formatted message, return a struct implementing HttpErrorInterface
+// To return a custom formatted message, return a struct implementing HTTPError
 // Or just return c.Json with a statusCode
 // Or just define a custom function for yourself, anything works.
-func NewHTTPError(code int, message string) HttpErrorInterface {
-	return &HTTPError{
+func NewHTTPError(code int, message string) HTTPError {
+	return &HttpError{
 		Code:    code,
 		Message: message,
 	}
 }
 
 // error occurred during request lifecycle
-// Used manually
-type HTTPError struct {
-	Code    int
-	Message string
+type HttpError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
-func (h *HTTPError) StatusCode() int {
+func (h HttpError) StatusCode() int {
 	return h.Code
 }
-func (h *HTTPError) JsonFormat() any {
-	return map[string]any{
-		"code":    h.Code,
-		"message": h.Message,
-	}
-}
-func (h *HTTPError) Error() string {
+func (h HttpError) Error() string {
 	return fmt.Sprintf("code=%d, message=%v", h.Code, h.Message)
 }
 
-// used to store the common errors
-// not to be used by the user directly
-type HttpError struct {
-	Code int
-}
-
+// common http errors with the default status code text
 var (
-	ErrBadRequest                  = HttpError{http.StatusBadRequest}            // 400
-	ErrUnauthorized                = HttpError{http.StatusUnauthorized}          // 401
-	ErrForbidden                   = HttpError{http.StatusForbidden}             // 403
-	ErrNotFound                    = HttpError{http.StatusNotFound}              // 404
-	ErrMethodNotAllowed            = HttpError{http.StatusMethodNotAllowed}      // 405
-	ErrRequestTimeout              = HttpError{http.StatusRequestTimeout}        // 408
-	ErrStatusRequestEntityTooLarge = HttpError{http.StatusRequestEntityTooLarge} // 413
-	ErrUnsupportedMediaType        = HttpError{http.StatusUnsupportedMediaType}  // 415
-	ErrTooManyRequests             = HttpError{http.StatusTooManyRequests}       // 429
-	ErrInternalServerError         = HttpError{http.StatusInternalServerError}   // 500
-	ErrBadGateway                  = HttpError{http.StatusBadGateway}            // 502
-	ErrServiceUnavailable          = HttpError{http.StatusServiceUnavailable}    // 503
+	ErrBadRequest                  = HttpError{http.StatusBadRequest, http.StatusText(http.StatusBadRequest)}                       // 400
+	ErrUnauthorized                = HttpError{http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)}                   // 401
+	ErrForbidden                   = HttpError{http.StatusForbidden, http.StatusText(http.StatusForbidden)}                         // 403
+	ErrNotFound                    = HttpError{http.StatusNotFound, http.StatusText(http.StatusNotFound)}                           // 404
+	ErrMethodNotAllowed            = HttpError{http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed)}           // 405
+	ErrRequestTimeout              = HttpError{http.StatusRequestTimeout, http.StatusText(http.StatusRequestTimeout)}               // 408
+	ErrStatusRequestEntityTooLarge = HttpError{http.StatusRequestEntityTooLarge, http.StatusText(http.StatusRequestEntityTooLarge)} // 413
+	ErrUnsupportedMediaType        = HttpError{http.StatusUnsupportedMediaType, http.StatusText(http.StatusUnsupportedMediaType)}   // 415
+	ErrTooManyRequests             = HttpError{http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests)}             // 429
+	ErrInternalServerError         = HttpError{http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError)}     // 500
+	ErrBadGateway                  = HttpError{http.StatusBadGateway, http.StatusText(http.StatusBadGateway)}                       // 502
+	ErrServiceUnavailable          = HttpError{http.StatusServiceUnavailable, http.StatusText(http.StatusServiceUnavailable)}       // 503
 )
-
-func (he HttpError) StatusCode() int {
-	return he.Code
-}
-func (he HttpError) StatusText() string {
-	return http.StatusText(he.Code) // does not include status code
-}
-func (he HttpError) Error() string {
-	return fmt.Sprintf("code=%d, message=%v", he.Code, he.StatusText())
-}
-func (he HttpError) JsonFormat() any {
-	return map[string]any{
-		"code":    he.StatusCode(),
-		"message": he.StatusText(),
-	}
-}
