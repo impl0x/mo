@@ -31,10 +31,7 @@ type Context struct {
 }
 
 func (c *Context) writeContentType(value string) {
-	header := c.response.Header()
-	if header.Get(HeaderContentType) == "" {
-		header.Set(HeaderContentType, value)
-	}
+	c.response.Header().Set(HeaderContentType, value)
 }
 
 func (c *Context) Request() *http.Request {
@@ -58,6 +55,7 @@ func (c *Context) Redirect(code int, url string) error {
 // NoContent sends a response with no body and a status code.
 func (c *Context) NoContent(code int) error {
 	c.response.ResponseWriter.WriteHeader(code) // skips the delayed response writer cache, because if we don't call write ourselves then http defaults to writing a 200 ok
+	c.response.committed=true
 	return nil
 }
 
