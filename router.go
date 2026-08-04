@@ -7,7 +7,7 @@ import (
 
 type Router interface {
 	Find(c *Context, path string, method string) (*Route, HTTPError) // finds the route, takes path, method
-	Add(*Route)                                                               // adds a route
+	Add(*Route)                                                      // adds a route
 }
 
 type routerConfig struct {

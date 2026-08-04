@@ -11,16 +11,16 @@ type Response struct {
 	http.ResponseWriter
 	committed              bool
 	statusCode             int
-	defaultHeaders         *HeadersManager	// pointer to mo.Headers, is present only to write in the [Write] func
+	defaultHeaders         *HeadersManager // pointer to mo.Headers, is present only to write in the [Write] func
 	RequestSpecificHeaders HeadersManager
 }
 
 // Returns a new Response struct with the default status code 200 OK
 func newResponse(w http.ResponseWriter, defaultHeaders *HeadersManager) Response {
 	return Response{
-		ResponseWriter: w,
-		statusCode: http.StatusOK,
-		defaultHeaders: defaultHeaders,
+		ResponseWriter:         w,
+		statusCode:             http.StatusOK,
+		defaultHeaders:         defaultHeaders,
 		RequestSpecificHeaders: DefaultHeadersManager(),
 	}
 }

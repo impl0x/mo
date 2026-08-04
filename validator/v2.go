@@ -49,12 +49,13 @@ type NameSpaceSettings struct {
 	UseParentDotSyntax bool // true: User.Age, false: Age
 	UseRootStructName  bool // true: User.Address.City, false: Address.City
 }
+
 // Read [NameSpaceSettings] for explanations
 //
 // do not mutate while running, only mutate at the start because this is a global variable
 //
 // else manage your own mutex
-var DefaultNameSpaceSettings = NameSpaceSettings{true, true, false} 
+var DefaultNameSpaceSettings = NameSpaceSettings{true, true, false}
 
 type field struct {
 	v    reflect.Value
@@ -73,7 +74,7 @@ func (vd *validator) init(nested bool) ValidationError {
 	}
 	vd.rt = vd.rv.Type()
 	if vd.rt.Kind() != reflect.Struct {
-		return newUserError("Not a struct",vd.parent, "") // if not struct we immediately return an error
+		return newUserError("Not a struct", vd.parent, "") // if not struct we immediately return an error
 	}
 	if DefaultNameSpaceSettings.UseParentDotSyntax {
 		vd.parent = vd.parent + vd.rt.Name() + "."
@@ -128,7 +129,7 @@ FieldLoop:
 		// handles dive here
 		if slices.Contains(vd.f.rules, dive) {
 			if vd.f.kind != reflect.Slice && vd.f.kind != reflect.Array {
-				vd.err.Append(newUserError("dive can be only used on  slices and arrays",vd.parent, vd.f.fieldName))
+				vd.err.Append(newUserError("dive can be only used on  slices and arrays", vd.parent, vd.f.fieldName))
 				continue
 			}
 			cachedField := vd.f // we cache the current struct field
@@ -167,7 +168,7 @@ func (vd *validator) handleNonEqRules(rule string) ValidationError {
 	switch rule { // written a theory at the end of this function to make this cleaner
 	case required: // we handled it before. so no need of it here
 	case optional:
-	case dive:  // we handled it before calling this function
+	case dive: // we handled it before calling this function
 	case email:
 		err = emailRx.validate(vd)
 	case e164:
@@ -203,7 +204,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	var isCollection = vd.f.kind == reflect.Slice || vd.f.kind == reflect.Array || vd.f.kind == reflect.Map || vd.f.kind == reflect.String
 	split := strings.Split(eqRule, "=")
 	if len(split) != 2 {
-		return newUserError("syntax error for tag",vd.parent, vd.f.fieldName)
+		return newUserError("syntax error for tag", vd.parent, vd.f.fieldName)
 	}
 	rule := split[0]
 	// println(rule)
@@ -217,19 +218,19 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		} else if isCollection { // array, slice, string, map
 			err = vd.handleNumericComparison(rule, float64(vd.f.v.Len()), ruleValueStr, vd.f.kind.String()+" length")
 		} else { // unsupported
-			err = newUserError("the field must be either string, collection or numeric.",vd.parent, vd.f.fieldName)
+			err = newUserError("the field must be either string, collection or numeric.", vd.parent, vd.f.fieldName)
 		}
 	case len_:
 		ruleValue, e := strconv.Atoi(ruleValueStr)
 		if e != nil {
-			return newUserError("len tag value must be int.",vd.parent, vd.f.fieldName)
+			return newUserError("len tag value must be int.", vd.parent, vd.f.fieldName)
 		}
 		if isCollection {
 			if vd.f.v.Len() != ruleValue {
 				err = newFieldValidateError(vd.f.kind.String()+" length must be exactly "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
-			err = newUserError("the field must be either string or collection" ,vd.parent, vd.f.fieldName)
+			err = newUserError("the field must be either string or collection", vd.parent, vd.f.fieldName)
 		}
 	case oneof:
 		if vd.f.kind == reflect.String {
@@ -238,7 +239,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 				err = newFieldValidateError(fmt.Sprintf("value must be either one of %v", strings.Join(ruleValues, ", ")), ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
-			err = newUserError("oneof tag must only be used on a string field",vd.parent, vd.f.fieldName)
+			err = newUserError("oneof tag must only be used on a string field", vd.parent, vd.f.fieldName)
 		}
 	case startswith:
 		if vd.f.kind == reflect.String {
@@ -246,7 +247,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 				err = newFieldValidateError("value must start with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
-			err = newUserError("startswith tag must be only used on a string field",vd.parent, vd.f.fieldName)
+			err = newUserError("startswith tag must be only used on a string field", vd.parent, vd.f.fieldName)
 		}
 	case endswith:
 		if vd.f.kind == reflect.String {
@@ -254,10 +255,10 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 				err = newFieldValidateError("value must end with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
-			err = newUserError("endswith tag must be only used on a string field",vd.parent, vd.f.fieldName)
+			err = newUserError("endswith tag must be only used on a string field", vd.parent, vd.f.fieldName)
 		}
 	default:
-		err = newUserError(fmt.Sprintf("syntax error: Invalid tag value for field %v, rule: %v", vd.f.fieldName, rule),vd.parent, vd.f.fieldName)
+		err = newUserError(fmt.Sprintf("syntax error: Invalid tag value for field %v, rule: %v", vd.f.fieldName, rule), vd.parent, vd.f.fieldName)
 	}
 	return err
 }
@@ -265,7 +266,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 func (vd *validator) handleNumericComparison(rule string, value float64, ruleValueStr string, errorValueName string) ValidationError {
 	ruleValue, e := strconv.ParseFloat(ruleValueStr, 64)
 	if e != nil {
-		return newUserError("condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64",vd.parent, vd.f.fieldName)
+		return newUserError("condition value must be convertible to float64. i.e. ex: min=\"3.14\", the value 3.14 be either uint, int, float64", vd.parent, vd.f.fieldName)
 	}
 	var errMsg string
 	switch rule {

@@ -44,7 +44,7 @@ func (g *Grouped) DELETE(path string, handler HandlerFunc, mi ...Middleware) *Ro
 // Add middlewares using "Use" before registering paths
 func (g *Grouped) Group(prefix string, mi ...Middleware) *Grouped {
 	return &Grouped{
-		prefix:      g.prefix+prefix,
+		prefix:      g.prefix + prefix,
 		Middlewares: append(g.Middlewares, mi...),
 		m:           g.m,
 	}

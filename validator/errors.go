@@ -16,7 +16,7 @@ type errorConfig struct {
 var ErrorConfig = errorConfig{false, true}
 
 // only 2 structs satisfy this interface, that is [UserError] / [FieldValidateError]
-type ValidationError interface{
+type ValidationError interface {
 	error
 	Namespace() string
 }
@@ -37,16 +37,16 @@ func (gve *GroupedValidationError) Append(elems ...ValidationError) {
 func (gve GroupedValidationError) ToJsonStructList() []ValidationErrorJson {
 	structList := make([]ValidationErrorJson, len(gve.Errors))
 	for i, err := range gve.Errors {
-		if _,ok:=err.(UserError);ok{
-			if ErrorConfig.LogUserErrors{
-				logger.Validator("user error: "+err.Error())
+		if _, ok := err.(UserError); ok {
+			if ErrorConfig.LogUserErrors {
+				logger.Validator("user error: " + err.Error())
 			}
-			if !ErrorConfig.ReturnUserErrors{
+			if !ErrorConfig.ReturnUserErrors {
 				continue
 			}
 		}
-		structList[i].Field=err.Namespace()
-		structList[i].Message=err.Error()
+		structList[i].Field = err.Namespace()
+		structList[i].Message = err.Error()
 	}
 	return structList
 }

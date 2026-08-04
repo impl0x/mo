@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// If you are implementing this interface and using the default http error handler then 
+// If you are implementing this interface and using the default http error handler then
 // make sure that the struct is json compatible because its going to be sent directly to the json encoder
 type HTTPError interface {
 	StatusCode() int
