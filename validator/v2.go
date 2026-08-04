@@ -113,7 +113,6 @@ FieldLoop:
 		}
 
 		vd.f.rules = strings.Split(tag, ",") // "required,email"->["required","email"]
-
 		// checks for field [optional] and [required]
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
@@ -167,6 +166,7 @@ func (vd *validator) handleNonEqRules(rule string) ValidationError {
 	var err ValidationError
 	switch rule { // written a theory at the end of this function to make this cleaner
 	case required: // we handled it before. so no need of it here
+	case optional:
 	case dive:  // we handled it before calling this function
 	case email:
 		err = emailRx.validate(vd)
