@@ -15,20 +15,17 @@ type errorConfig struct {
 // Config for some error settings
 var ErrorConfig = errorConfig{false, true}
 
-// It is either a [UserError] or a [FieldValidateError]
-type ValidationError interface {
-	JsonFormat() map[string]any
+// only 2 structs satisfy this interface, that is [UserError] / [FieldValidateError]
+type ValidationError interface{
+	error
+	Namespace() string
 }
 
 type GroupedValidationError struct {
-	Errors []ValidationError // you can type assert for [UserError] / [FieldValidateError], if ReturnUserErrors singleton bool is false then only FieldValidateError will be present.
+	Errors []ValidationError // you can type assert for [UserError] / [FieldValidateError] safely, if ReturnUserErrors singleton bool is false then only FieldValidateError will be present.
 }
 
-func NewGroupedValidationError() *GroupedValidationError {
-	return &GroupedValidationError{}
-}
-
-func (gve *GroupedValidationError) Error() string {
+func (gve GroupedValidationError) Error() string {
 	return "Validation error, please loop over Errors to see each error."
 }
 
@@ -36,40 +33,58 @@ func (gve *GroupedValidationError) Append(elems ...ValidationError) {
 	gve.Errors = append(gve.Errors, elems...)
 }
 
-func (gve *GroupedValidationError) JsonFormat() []map[string]any {
-	jsonList := make([]map[string]any, 0, len(gve.Errors))
-	for _, err := range gve.Errors {
-		if e, ok := err.(*UserError); ok {
-			if ErrorConfig.LogUserErrors {
-				logger.Validator(e.Error())
+// returns a slice of error structs which are compatible with json marshalling, can be safely given to json encoder
+func (gve GroupedValidationError) ToJsonStructList() []ValidationErrorJson {
+	structList := make([]ValidationErrorJson, len(gve.Errors))
+	for i, err := range gve.Errors {
+		if _,ok:=err.(UserError);ok{
+			if ErrorConfig.LogUserErrors{
+				logger.Validator("user error: "+err.Error())
 			}
-			if !ErrorConfig.ReturnUserErrors {
+			if !ErrorConfig.ReturnUserErrors{
 				continue
 			}
 		}
-		jsonList = append(jsonList, err.JsonFormat())
+		structList[i].Field=err.Namespace()
+		structList[i].Message=err.Error()
 	}
-	return jsonList
+	return structList
 }
+
+type ValidationErrorJson struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+func (vej ValidationErrorJson) Error() string {
+	return vej.Message
+}
+
+// The reason [UserError] and [FieldValidateError] are separate and have the same fields is to signify the type of the error
 
 // syntax error in tag formatting
 type UserError struct {
-	detail string
+	parent    string
+	fieldName string
+	detail    string
 }
 
-func newUserError(detail string) *UserError {
-	return &UserError{
+func newUserError(parent, fieldName, detail string) UserError {
+	return UserError{
 		detail: detail,
 	}
 }
 
-func (ue *UserError) Error() string {
+func (ue UserError) Error() string {
 	return ue.detail
 }
-func (ue *UserError) JsonFormat() map[string]any {
-	return map[string]any{
-		"message": ue.detail,
+
+func (ue UserError) Namespace() string {
+	fName := ue.fieldName
+	if DefaultNameSpaceSettings.UseLowerCase {
+		fName = strings.ToLower(fName)
 	}
+	return ue.parent + fName
 }
 
 // Contains all the information about the failed validation for the field
@@ -77,37 +92,27 @@ type FieldValidateError struct {
 	Message string
 	param   string
 	parent  string
-	f       field
+	f       *field
 }
 
-func NewFieldValidateError(msg, param, parent string, field field) *FieldValidateError {
-	return &FieldValidateError{
-		msg, param, parent, field,
+func newFieldValidateError(msg, param, parent string, field field) FieldValidateError {
+	return FieldValidateError{
+		msg, param, parent, &field,
 	}
 }
 
-func (ve *FieldValidateError) Error() string {
+func (ve FieldValidateError) Error() string {
 	return ve.Message
 }
 
-// Formats the error into a Map for sending as a json response
-//
-// format: {"message":"String length too short","field":"username"}
-func (ve *FieldValidateError) JsonFormat() map[string]any {
-	return map[string]any{
-		"message": ve.Message,
-		"field":   ve.Namespace(),
-	}
-}
-
-func (ve *FieldValidateError) Tag() string {
+func (ve FieldValidateError) Tag() string {
 	return string(ve.f.t.Tag)
 }
 
 // returns just the field
 //
 // ex: Age
-func (ve *FieldValidateError) Field() string {
+func (ve FieldValidateError) Field() string {
 
 	return ve.f.t.Name
 }
@@ -115,7 +120,7 @@ func (ve *FieldValidateError) Field() string {
 // returns parent struct + field name
 //
 // ex: User.Age
-func (ve *FieldValidateError) Namespace() string {
+func (ve FieldValidateError) Namespace() string {
 	fName := ve.f.fieldName
 	if DefaultNameSpaceSettings.UseLowerCase {
 		fName = strings.ToLower(fName)
@@ -123,24 +128,24 @@ func (ve *FieldValidateError) Namespace() string {
 	return ve.parent + fName
 }
 
-func (ve *FieldValidateError) Value() any {
+func (ve FieldValidateError) Value() any {
 	return ve.f.v.Interface()
 }
 
-func (ve *FieldValidateError) Param() string {
+func (ve FieldValidateError) Param() string {
 	return ve.param
 }
 
 // Kind returns the Field's reflect Kind
 //
 // eg. time.Time's kind is a struct
-func (ve *FieldValidateError) Kind() reflect.Kind {
+func (ve FieldValidateError) Kind() reflect.Kind {
 	return ve.f.kind
 }
 
 // Type returns the Field's reflect Type
 //
 // eg. time.Time's type is time.Time
-func (ve *FieldValidateError) Type() reflect.Type {
+func (ve FieldValidateError) Type() reflect.Type {
 	return ve.Type()
 }

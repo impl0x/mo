@@ -75,10 +75,10 @@ var ipv6Rx = regexRule{
 
 func (r *regexRule) validate(vd *validator) ValidationError {
 	if vd.f.kind != reflect.String {
-		return newUserError(fmt.Sprintf("cannot validate \"%s\" rule against a %s", r.name, vd.f.kind.String()))
+		return newUserError(fmt.Sprintf("cannot validate \"%s\" rule against a %s", r.name, vd.f.kind.String()),vd.parent, vd.f.fieldName)
 	}
 	if !r.regEx.MatchString(vd.f.v.String()) {
-		return NewFieldValidateError("not a valid "+r.name, "", vd.parent, vd.f)
+		return newFieldValidateError("not a valid "+r.name, "", vd.parent, vd.f)
 	}
 	return nil
 }
