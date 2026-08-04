@@ -93,6 +93,9 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h = route.Middlewares[i](h)
 		}
 		m.HTTPErrorHandler(c, h(c)) // finally we run the handler and pass the result to the error handler
+		if !c.response.committed{ // if user didn't write a response we by default send a no content status code response
+			c.NoContent(http.StatusNoContent) // ignore error, returns nil always
+		}
 	}
 	for i := len(m.PostMiddlewares) - 1; i >= 0; i-- { // running all the post middlewares
 		m.PostMiddlewares[i](c) // we run post middlewares no matter the failure or status of the request, especially for logging purposes.
