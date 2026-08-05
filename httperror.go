@@ -36,6 +36,8 @@ func (h HttpError) Error() string {
 }
 
 // common http errors with the default status code text
+//
+// These can be directly passed to context.JSON as these structs are json compatible, feel free to return them directly too if using the default error handler
 var (
 	ErrBadRequest                  = HttpError{http.StatusBadRequest, http.StatusText(http.StatusBadRequest)}                       // 400
 	ErrUnauthorized                = HttpError{http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)}                   // 401
