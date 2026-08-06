@@ -33,7 +33,7 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 				return
 			}
 			if c.Mo.Config.LogErrors {
-				logger.Mo("Cannot write error, response already sent!", "err", err.Error())
+				logger.Mo("cannot write error, response already sent!", "err", err.Error())
 			}
 			return
 		}

@@ -118,7 +118,7 @@ FieldLoop:
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
 				if ru == required { // i.e. if zero and required we append a error
-					vd.err.Append(newFieldValidateError("required field not found "+vd.f.fieldName, "", vd.parent, vd.f))
+					vd.err.Append(newFieldValidateError("Required field not found "+vd.f.fieldName, "", vd.parent, vd.f))
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
@@ -236,7 +236,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		if vd.f.kind == reflect.String {
 			ruleValues := strings.Split(ruleValueStr, " ")
 			if !slices.Contains(ruleValues, vd.f.v.String()) {
-				err = newFieldValidateError(fmt.Sprintf("value must be either one of %v", strings.Join(ruleValues, ", ")), ruleValueStr, vd.parent, vd.f)
+				err = newFieldValidateError(fmt.Sprintf("Value must be either one of %v", strings.Join(ruleValues, ", ")), ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
 			err = newUserError("oneof tag must only be used on a string field", vd.parent, vd.f.fieldName)
@@ -244,7 +244,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	case startswith:
 		if vd.f.kind == reflect.String {
 			if !strings.HasPrefix(vd.f.v.String(), ruleValueStr) {
-				err = newFieldValidateError("value must start with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
+				err = newFieldValidateError("Value must start with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
 			err = newUserError("startswith tag must be only used on a string field", vd.parent, vd.f.fieldName)
@@ -252,7 +252,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	case endswith:
 		if vd.f.kind == reflect.String {
 			if !strings.HasSuffix(vd.f.v.String(), ruleValueStr) {
-				err = newFieldValidateError("value must end with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
+				err = newFieldValidateError("Value must end with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
 			}
 		} else {
 			err = newUserError("endswith tag must be only used on a string field", vd.parent, vd.f.fieldName)
