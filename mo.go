@@ -35,7 +35,7 @@ func New() *Mo {
 	return &Mo{
 		router:           NewRadixRouter(),
 		HTTPErrorHandler: DefaultHTTPErrorHandler(false),
-		Headers:          DefaultHeadersManager(),
+		Headers:          NewHeadersManager(),
 		Config:           DefaultConfig(),
 	}
 }
@@ -75,7 +75,7 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := contextPool.Get().(*Context)
 	c.request = r
 	c.response = newResponse(w, &m.Headers)
-	c.ResponseHeaders = DefaultHeadersManager()
+	c.ResponseHeaders = NewHeadersManager()
 	c.Mo = m
 	// we clear the prev maps
 	clear(c.Store)

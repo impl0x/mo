@@ -32,14 +32,15 @@ type HeadersManager struct {
 	headers map[string]string
 }
 
-func DefaultHeadersManager() HeadersManager {
-	return HeadersManager{
-		headers: make(map[string]string),
-	}
+func NewHeadersManager() HeadersManager {
+	return HeadersManager{}
 }
 
 // Adds a header using key and value
 func (h *HeadersManager) Add(key, value string) {
+	if h.headers == nil {
+		h.headers = make(map[string]string)
+	}
 	h.headers[key] = value
 }
 
@@ -63,9 +64,9 @@ var ErrNotAStruct = errors.New("cannot bind headers to a non struct object")
 //
 //	XTraceId string `header:"x-trace-id"`
 func (h *HeadersManager) Bind(target any) error {
-
-	headers := h.headers
-
+	if h.headers == nil {
+		h.headers = make(map[string]string)
+	}
 	rv := reflect.ValueOf(target)
 	if rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
@@ -87,7 +88,7 @@ func (h *HeadersManager) Bind(target any) error {
 		if !ok {
 			continue
 		}
-		headers[tag] = v.String()
+		h.headers[tag] = v.String()
 	}
 	return nil
 }

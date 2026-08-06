@@ -21,7 +21,7 @@ func newResponse(w http.ResponseWriter, defaultHeaders *HeadersManager) Response
 		ResponseWriter:         w,
 		statusCode:             http.StatusOK,
 		defaultHeaders:         defaultHeaders,
-		RequestSpecificHeaders: DefaultHeadersManager(),
+		RequestSpecificHeaders: NewHeadersManager(),
 	}
 }
 
