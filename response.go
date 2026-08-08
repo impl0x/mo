@@ -48,3 +48,7 @@ func (r *Response) Write(b []byte) (int, error) {
 func (r *Response) StatusCode() int {
 	return r.statusCode
 }
+
+func(r *Response) IsCommitted()bool{
+	return r.committed
+}
