@@ -256,6 +256,11 @@ func handler(c *mo.Context) error {
 you can also validate it at the same place using the other function.
 
 # 
+Some features that I am aware of but unwilling to add:
+- Pre compiling the middlewares and creating one compiled handler and storing that in the router instead of chaining everything on ServeHTTP function when a request arrives. Yes this saves heap allocations and makes it a bit faster, but this also means changing how middlewares are registered and how paths are stored fundamentally, because then I will have to figure out how to layer middlewares depending upon how they are registered and possibly have to enforce more rules upon the user to register middlewares a certain way and paths a certain way to make them work properly. Which feels tedious and will make me change a lot of code in the codebase as of now, and even though it has performance benefits I feel having a better user experience is more important.  
+
+I have tried my best to keep the balance between user experience and performance, because after-all we all have relatively powerful systems which can handle a good amount of requests a second and this framework is not meant to be the fastest of them all and be the most powerful and lowest latency in the first place. I started this project for myself to have a reuseable backend template so being able to have comfort is better than having a tiny bit of extra performance.
+#  
 Thats it, If you find any bugs please raise an issue. And if there are any suggestions please reach out to me via gmail in my profile.  
 Thank you  
 *~ Impl0x*
