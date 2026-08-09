@@ -136,9 +136,6 @@ func ContextGet[T any](c *Context, key string) (T, error) {
 //
 // fields of the struct MUST be strings!
 func (c *Context) BindHeaders(target any) {
-
-	headers := c.request.Header
-
 	rv := reflect.ValueOf(target)
 	if rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
@@ -166,7 +163,7 @@ func (c *Context) BindHeaders(target any) {
 		if !ok {
 			continue
 		}
-		value := headers.Get(tag)
+		value := c.request.Header.Get(tag)
 		if value == "" {
 			continue
 		}
