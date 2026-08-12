@@ -21,22 +21,24 @@ type ValidationError interface {
 	Namespace() string
 }
 
-type GroupedValidationError struct {
-	Errors []ValidationError // you can type assert for [UserError] / [FieldValidateError] safely, if ReturnUserErrors singleton bool is false then only FieldValidateError will be present.
-}
+type GroupedValidationError []ValidationError
+
+// type GroupedValidationError struct {
+	// Errors []ValidationError // you can type assert for [UserError] / [FieldValidateError] safely, if ReturnUserErrors singleton bool is false then only FieldValidateError will be present.
+// }
 
 func (gve GroupedValidationError) Error() string {
-	return "Validation error, please loop over Errors to see each error."
+	return "Validation error" // type assert to []ValidationError and loop over to see each error.
 }
 
 func (gve *GroupedValidationError) Append(elems ...ValidationError) {
-	gve.Errors = append(gve.Errors, elems...)
+	*gve = append(*gve, elems...)
 }
 
 // returns a slice of error structs which are compatible with json marshalling, can be safely given to json encoder
 func (gve GroupedValidationError) ToJsonStructList() []ValidationErrorJson {
-	structList := make([]ValidationErrorJson, len(gve.Errors))
-	for i, err := range gve.Errors {
+	structList := make([]ValidationErrorJson, len(gve))
+	for i, err := range gve {
 		if _, ok := err.(UserError); ok {
 			if ErrorConfig.LogUserErrors {
 				logger.Validator("user error: " + err.Error())

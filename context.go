@@ -184,9 +184,9 @@ func (c *Context) DecodeAndValidateBody(target any) error {
 	if err != nil {
 		return err
 	}
-	validationResult := validator.Validate(target)
-	if validationResult.Errors != nil {
-		return validationResult
+	errs := validator.Validate(target)
+	if errs != nil {
+		return errs
 	}
 	return nil
 }

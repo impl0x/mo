@@ -40,7 +40,7 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 		switch e := err.(type) {
 		case HTTPError:
 			c.JSON(e.StatusCode(), e)
-		case *validator.GroupedValidationError:
+		case validator.GroupedValidationError:
 			c.JSON(http.StatusBadRequest, validationErrorJson{HttpError: ErrBadRequest, Errors: e.ToJsonStructList()})
 		case *json.SyntaxError:
 			c.JSON(http.StatusUnprocessableEntity, HttpError{

@@ -28,7 +28,7 @@ const validatorTag = "validate"
 type validator struct {
 	parent string
 	target any
-	err    *GroupedValidationError
+	errs    GroupedValidationError
 
 	rv reflect.Value
 	rt reflect.Type
@@ -40,7 +40,7 @@ func newValidator(target any, parent string) *validator {
 	return &validator{
 		parent: parent,
 		target: target,
-		err:    &GroupedValidationError{},
+		errs:    GroupedValidationError{},
 	}
 }
 
@@ -67,7 +67,7 @@ type field struct {
 	fieldName string
 }
 
-func (vd *validator) init(nested bool) ValidationError {
+func (vd *validator) init(isNested bool) ValidationError {
 	vd.rv = reflect.ValueOf(vd.target)
 	if vd.rv.Kind() == reflect.Pointer { // if v is a pointer then we dereference it
 		vd.rv = vd.rv.Elem()
@@ -78,7 +78,7 @@ func (vd *validator) init(nested bool) ValidationError {
 	}
 	if DefaultNameSpaceSettings.UseParentDotSyntax {
 		vd.parent = vd.parent + vd.rt.Name() + "."
-		if !nested && !DefaultNameSpaceSettings.UseRootStructName {
+		if !isNested && !DefaultNameSpaceSettings.UseRootStructName {
 			vd.parent = ""
 		}
 	}
@@ -105,7 +105,7 @@ FieldLoop:
 			continue // if field isn't exported we skip it
 		}
 		if vd.f.kind == reflect.Struct { // recursively validates any nested structs
-			vd.err.Append(validate(newValidator(vd.f.v.Interface(), vd.parent), true).Errors...)
+			vd.errs.Append(validate(newValidator(vd.f.v.Interface(), vd.parent), true)...)
 			continue
 		}
 		tag, ok := vd.f.t.Tag.Lookup(validatorTag)
@@ -118,7 +118,7 @@ FieldLoop:
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
 				if ru == required { // i.e. if zero and required we append a error
-					vd.err.Append(newFieldValidateError("Required field not found "+vd.f.fieldName, "", vd.parent, vd.f))
+					vd.errs.Append(newFieldValidateError("Required field not found", "", vd.parent, vd.f))
 					continue FieldLoop // we continue the outer loop
 				}
 				if ru == optional {
@@ -129,7 +129,7 @@ FieldLoop:
 		// handles dive here
 		if slices.Contains(vd.f.rules, dive) {
 			if vd.f.kind != reflect.Slice && vd.f.kind != reflect.Array {
-				vd.err.Append(newUserError("dive can be only used on  slices and arrays", vd.parent, vd.f.fieldName))
+				vd.errs.Append(newUserError("dive can be only used on  slices and arrays", vd.parent, vd.f.fieldName))
 				continue
 			}
 			cachedField := vd.f // we cache the current struct field
@@ -157,7 +157,7 @@ func loopHelper(vd *validator) {
 	for _, rule := range vd.f.rules { // loop over every rule and pass it to the handler
 		err := vd.handleNonEqRules(rule)
 		if err != nil {
-			vd.err.Append(err)
+			vd.errs.Append(err)
 		}
 	}
 }
@@ -293,23 +293,23 @@ func (vd *validator) handleNumericComparison(rule string, value float64, ruleVal
 	return nil
 }
 
-func Validate(target any) *GroupedValidationError {
+func Validate(target any) GroupedValidationError {
 	v := &validator{
 		target: target,
-		err:    &GroupedValidationError{},
+		errs: make(GroupedValidationError, 0),
 	}
 	return validate(v, false)
 }
 
-func validate(vd *validator, nested bool) *GroupedValidationError {
-	err := vd.init(nested)
+func validate(vd *validator, isNested bool) GroupedValidationError {
+	err := vd.init(isNested)
 	if err != nil {
-		vd.err.Append(err)
-		return vd.err
+		vd.errs.Append(err)
+		return vd.errs
 	}
 	vd.loop()
-	if len(vd.err.Errors) == 0 {
-		return nil
+	if len(vd.errs) != 0 {
+		return vd.errs
 	}
-	return vd.err
+	return nil
 }

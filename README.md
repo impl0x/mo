@@ -184,12 +184,14 @@ has a few rules here
 - len: must be exactly this long, applies to string, arrays, slices, maps.
 
 #### Error format for validator
-The `validator.Validate` function returns a `*validator.GroupedValidationError` type.  
-Which has a field called Errors which contains fields of type of the interface `ValidationError`  
-You can iterate over it and type Assert ValidateError struct to get access to the methods which return  
+The `validator.Validate` function returns a `validator.GroupedValidationError` type.  
+Whose underlying type is of `[]ValidationError`. Where `ValidationError` is a interface embedding `error` and having a single function of `NameSpace() string`.    
+Two structs satisfy this interface, `FieldValidateError` and `UserError`, the names are pretty self explanatory, `UserError` is only present if the user used the validation tags wrong.  
+You can iterate over it and type assert for `FieldValidateError` struct to get access to the methods which return  
 almost everything you need to make a custom error message with it.  
-Else you can directly call the `.JsonFormat()` method on the `GroupedValidationError` that was initially returned, this returns the default format of errors which is in this format:  
-example: if we validated a wrong email and a wrong url, and then called the `JsonFormat` on that error we get this as a `[]Map`. (I know its weird that i am returning a map from the function JsonFormat, but I felt it was better than returning a `JSON` string).
+Else you can directly call the `.ToJsonStructList()` method on the `GroupedValidationError` that was initially returned, this returns a slice of structs which are json compatible (so you can directly pass it to json encoder),  
+the default format of errors which is in this format:  
+example: if we validated a wrong email and a wrong url, and then called the `.ToJsonStructList()` on that error we get this as a `[]ValidationErrorJson`.  
 ```json
 [
 	{
