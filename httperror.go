@@ -15,8 +15,8 @@ type HTTPError interface {
 // To return a custom formatted message, return a struct implementing HTTPError
 // Or just return c.Json with a statusCode
 // Or just define a custom function for yourself, anything works.
-func NewHTTPError(code int, message string) HTTPError {
-	return &HttpError{
+func NewHttpError(code int, message string) HttpError {
+	return HttpError{
 		Code:    code,
 		Message: message,
 	}
