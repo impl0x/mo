@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var NumTypes = []reflect.Kind{
+var numTypes = []reflect.Kind{
 	reflect.Int8,
 	reflect.Int16,
 	reflect.Int32,
@@ -28,7 +28,7 @@ const validatorTag = "validate"
 type validator struct {
 	parent string
 	target any
-	errs    GroupedValidationError
+	errs   GroupedValidationError
 
 	rv reflect.Value
 	rt reflect.Type
@@ -40,7 +40,7 @@ func newValidator(target any, parent string) *validator {
 	return &validator{
 		parent: parent,
 		target: target,
-		errs:    GroupedValidationError{},
+		errs:   GroupedValidationError{},
 	}
 }
 
@@ -188,7 +188,12 @@ func (vd *validator) handleNonEqRules(rule string) ValidationError {
 	case ipv6:
 		err = ipv6Rx.validate(vd)
 	default: // eqRules here, min,max,lte,gte,etc.
-		err = vd.handleEqRules(rule) // rule: min=2
+		cd, ok := customValidations[rule] // checking if it is a custom rule
+		if ok {
+			err = cd.Validate(&vd.f, vd.parent, vd.f.v.Interface())
+		} else {
+			err = vd.handleEqRules(rule) // rule: min=2
+		}
 	}
 	return err
 }
@@ -213,7 +218,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	switch rule {
 	case min_, max_, gte, lte, lt, gt:
 		// type checking for the field value here
-		if slices.Contains(NumTypes, vd.f.kind) { // checking numTypes, int, uint, float,etc.
+		if slices.Contains(numTypes, vd.f.kind) { // checking numTypes, int, uint, float,etc.
 			err = vd.handleNumericComparison(rule, vd.f.v.Convert(reflect.TypeFor[float64]()).Float(), ruleValueStr, "Field value")
 		} else if isCollection { // array, slice, string, map
 			err = vd.handleNumericComparison(rule, float64(vd.f.v.Len()), ruleValueStr, vd.f.kind.String()+" length")
@@ -296,7 +301,7 @@ func (vd *validator) handleNumericComparison(rule string, value float64, ruleVal
 func Validate(target any) GroupedValidationError {
 	v := &validator{
 		target: target,
-		errs: make(GroupedValidationError, 0),
+		errs:   make(GroupedValidationError, 0),
 	}
 	return validate(v, false)
 }

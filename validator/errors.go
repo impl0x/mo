@@ -71,7 +71,7 @@ type UserError struct {
 	detail    string
 }
 
-func newUserError(parent, fieldName, detail string) UserError {
+func newUserError(detail, fieldName, parent string) UserError {
 	return UserError{
 		parent: parent,
 		fieldName: fieldName,
