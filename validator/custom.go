@@ -1,6 +1,6 @@
 package validator
 
-// Interface satisfying the custom validation logic, made to store generic structs in a map without insantiation
+// Interface satisfying the custom validation logic, made to store generic structs in a map without instantiation
 type CustomValidator interface {
 	Validate(f *field, parent string, value any) ValidationError
 }
