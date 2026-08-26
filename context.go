@@ -3,6 +3,7 @@ package mo
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -15,7 +16,7 @@ import (
 var contextPool = sync.Pool{
 	New: func() any {
 		return &Context{
-			Store:  make(map[string]any),
+			store:  make(map[string]any),
 			params: make(map[string]string),
 		}
 	},
@@ -26,7 +27,7 @@ type Context struct {
 	response        Response
 	ResponseHeaders HeadersManager // Sends headers with the response for this request
 	Mo              *Mo            // original Mo instance
-	Store           map[string]any // stores context values
+	store           map[string]any // stores context values
 	params          map[string]string
 }
 
@@ -102,18 +103,18 @@ var ErrInvalidKeyType = errors.New("invalid key type")
 
 // Adds a value to the context storage
 func (c *Context) Add(key string, value any) {
-	c.Store[key] = value
+	c.store[key] = value
 }
 
 // Gets a value from the context storage
 func (c *Context) Get(key string) (any, bool) {
-	v, ok := c.Store[key]
+	v, ok := c.store[key]
 	return v, ok
 }
 
 // Gets a value from the context storage (typed)
 func ContextGet[T any](c *Context, key string) (T, error) {
-	value, ok := c.Store[key]
+	value, ok := c.store[key]
 	if !ok {
 		var zero T
 		return zero, ErrNonExistentKey
@@ -124,6 +125,20 @@ func ContextGet[T any](c *Context, key string) (T, error) {
 		return zero, ErrInvalidKeyType
 	}
 	return typed, nil
+}
+
+// Deletes a item in Store
+// 
+// although it is not mandatory to delete all the items in store yourself as it is done automatically at the end but you can do it
+func (c *Context) Delete(key string){
+	delete(c.store,key)
+}
+
+// A shallow copy of the current store is returned
+// 
+// try to avoid calling this as this has to create a copy of the entire map again if the map is large, use the Add, Get, Delete method present
+func (c *Context) Store()map[string]any{
+	return maps.Clone(c.store)
 }
 
 // Binds the *request* headers to a struct
