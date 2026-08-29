@@ -78,7 +78,7 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.ResponseHeaders = NewHeadersManager()
 	c.Mo = m
 	// we clear the prev maps
-	clear(c.Store)
+	clear(c.store)
 	clear(c.params)
 
 	route, err := m.router.Find(c, r.URL.Path, r.Method)
