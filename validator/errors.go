@@ -48,11 +48,10 @@ func (gve GroupedValidationError) ToJsonStructList() []ValidationErrorJson {
 				continue
 			}
 		}
-		structList[i].Field = err.Namespace()
-		structList[i].Message = err.Error()
+		structList = append(structList, ValidationErrorJson{err.Namespace(), err.Error()})
 		i++
 	}
-	if len(structList)==0{
+	if len(structList) == 0 {
 		return nil
 	}
 	return structList
