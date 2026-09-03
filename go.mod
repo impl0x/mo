@@ -1,3 +1,3 @@
 module github.com/impl0x/mo
 
-go 1.26.2
+go 1.27.1

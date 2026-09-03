@@ -1,7 +1,7 @@
 package mo
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"maps"
 	"net/http"
@@ -77,7 +77,7 @@ func (c *Context) Blob(code int, contentType string, b []byte) error {
 func (c *Context) JSON(code int, target any) error {
 	c.writeContentType(MIMEApplicationJSON)
 	c.response.WriteHeader(code)
-	return json.NewEncoder(&c.response).Encode(target)
+	return json.MarshalWrite(&c.response, target)
 }
 
 func (c *Context) TEXT(code int, body string) error {
@@ -113,7 +113,7 @@ func (c *Context) Get(key string) (any, bool) {
 }
 
 // Gets a value from the context storage (typed)
-func ContextGet[T any](c *Context, key string) (T, error) {
+func (c *Context) ContextGet[T any](key string) (T, error) {
 	value, ok := c.store[key]
 	if !ok {
 		var zero T
@@ -124,20 +124,21 @@ func ContextGet[T any](c *Context, key string) (T, error) {
 		var zero T
 		return zero, ErrInvalidKeyType
 	}
+
 	return typed, nil
 }
 
 // Deletes a item in Store
-// 
+//
 // although it is not mandatory to delete all the items in store yourself as it is done automatically at the end but you can do it
-func (c *Context) Delete(key string){
-	delete(c.store,key)
+func (c *Context) Delete(key string) {
+	delete(c.store, key)
 }
 
 // A shallow copy of the current store is returned
-// 
+//
 // try to avoid calling this as this has to create a copy of the entire map again if the map is large, use the Add, Get, Delete method present
-func (c *Context) Store()map[string]any{
+func (c *Context) Store() map[string]any {
 	return maps.Clone(c.store)
 }
 
@@ -188,14 +189,12 @@ func (c *Context) BindHeaders(target any) {
 
 // Decodes the request body into a struct
 func (c *Context) DecodeBody(target any) error {
-	return json.NewDecoder(c.request.Body).Decode(target)
+	return json.UnmarshalRead(c.request.Body, target)
 }
 
-// Decodes the request body into a struct and validates that
-//
-// The body must be json
+// Decodes the request body into a struct and validates that using [github.com/impl0x/mo/validator]
 func (c *Context) DecodeAndValidateBody(target any) error {
-	err := json.NewDecoder(c.request.Body).Decode(target)
+	err := json.UnmarshalRead(c.request.Body, target)
 	if err != nil {
 		return err
 	}

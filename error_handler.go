@@ -1,7 +1,9 @@
 package mo
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -28,6 +30,10 @@ type validationErrorJson struct {
 // Then return a valid json from JsonFormat() method and a valid status-code from StatusCode()
 func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 	return func(c *Context, err error) {
+		var jsonSyntaxErr *jsontext.SyntacticError
+		var jsonSemanticErr *json.SemanticError
+		var httpErr HTTPError
+		var vdErr validator.GroupedValidationError
 		if c.response.committed {
 			if err == nil {
 				return
@@ -37,35 +43,35 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			}
 			return
 		}
-		switch e := err.(type) {
-		case HTTPError:
-			c.JSON(e.StatusCode(), e)
-		case validator.GroupedValidationError:
-			c.JSON(http.StatusBadRequest, validationErrorJson{HttpError: ErrBadRequest, Errors: e.ToJsonStructList()})
-		case *json.SyntaxError:
+		switch {
+		case errors.As(err, &httpErr):
+			c.JSON(httpErr.StatusCode(), httpErr)
+		case errors.As(err, &vdErr):
+			c.JSON(http.StatusBadRequest, validationErrorJson{HttpError: ErrBadRequest, Errors: vdErr.ToJsonStructList()})
+		case errors.As(err, &jsonSyntaxErr):
 			c.JSON(http.StatusUnprocessableEntity, HttpError{
 				Code:    http.StatusUnprocessableEntity,
-				Message: fmt.Sprintf("JSON syntax error at offset %d", e.Offset),
+				Message: fmt.Sprintf("JSON syntax error at offset %d", jsonSyntaxErr.ByteOffset),
 			})
-		case *json.UnmarshalTypeError:
-			c.JSON(http.StatusExpectationFailed, HttpError{
-				Code:    http.StatusExpectationFailed,
-				Message: fmt.Sprintf("Wrong type used for field %s", e.Field),
+		case errors.As(err, &jsonSemanticErr):
+			c.JSON(http.StatusBadRequest, HttpError{
+				Code:    http.StatusBadRequest,
+				Message: fmt.Sprintf("Wrong type used for field %s, expected type: %s", jsonSemanticErr.JSONPointer.LastToken(), jsonSemanticErr.GoType.String()),
 			})
-		case nil:
+		case err == nil:
 			c.NoContent(http.StatusNoContent)
 		default:
-			if e.Error() == "EOF" { // rare case because json parsing returns a errorString of EOF when a body is empty.
+			if err.Error() == "EOF" {
 				c.JSON(http.StatusUnprocessableEntity, HttpError{
 					Code:    http.StatusUnprocessableEntity,
-					Message: "EOF",
+					Message: "Syntax Error: JSON cut off unexpectedly",
 				})
 				return
 			}
 			resp := internalErrorJson{HTTPError: ErrInternalServerError}
 			if exposeError {
-				resp.Error = e.Error()
-				logger.Mo("Internal error: "+e.Error(), "errorType", fmt.Sprintf("%T", e))
+				resp.Error = err.Error()
+				logger.Mo("Internal error: "+err.Error(), "errorType", fmt.Sprintf("%T", err))
 			}
 			c.JSON(http.StatusInternalServerError, resp)
 		}
