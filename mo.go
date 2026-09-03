@@ -2,6 +2,7 @@ package mo
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/impl0x/mo/modules/logger"
 )
@@ -86,19 +87,19 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m.HTTPErrorHandler(c, err) // either Method wrong or path Not found
 	} else {
 		h := route.Handler
-		for i := len(m.Middlewares) - 1; i >= 0; i-- { // wrapping with global middlewares
-			h = m.Middlewares[i](h)
+		for _, v := range slices.Backward(m.Middlewares) { // wrapping with global middlewares
+			h = v(h)
 		}
-		for i := len(route.Middlewares) - 1; i >= 0; i-- { // wrapping with route specific middlewares
-			h = route.Middlewares[i](h)
+		for _, v := range slices.Backward(route.Middlewares) { // wrapping with route specific middlewares
+			h = v(h)
 		}
 		m.HTTPErrorHandler(c, h(c)) // finally we run the handler and pass the result to the error handler
 		if !c.response.committed {  // if user didn't write a response we by default send a no content status code response
 			c.NoContent(http.StatusNoContent) // ignore error, returns nil always
 		}
 	}
-	for i := len(m.PostMiddlewares) - 1; i >= 0; i-- { // running all the post middlewares
-		m.PostMiddlewares[i](c) // we run post middlewares no matter the failure or status of the request, especially for logging purposes.
+	for _, v := range slices.Backward(m.PostMiddlewares) { // running all the post middlewares
+		v(c) // we run post middlewares no matter the failure or status of the request, especially for logging purposes.
 	}
 	// we do not bother cleaning the state because Get just overwrites the state.
 	contextPool.Put(c)
