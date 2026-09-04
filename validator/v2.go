@@ -67,12 +67,19 @@ type field struct {
 	fieldName string
 }
 
+var testCacheMap = map[reflect.Type]int{}
+
 func (vd *validator) init(isNested bool) ValidationError {
 	vd.rv = reflect.ValueOf(vd.target)
 	if vd.rv.Kind() == reflect.Pointer { // if v is a pointer then we dereference it
 		vd.rv = vd.rv.Elem()
 	}
 	vd.rt = vd.rv.Type()
+	if _, ok := testCacheMap[vd.rt]; ok {
+		println("CACHED TYPE")
+	} else {
+		testCacheMap[vd.rt] = 0
+	}
 	if vd.rt.Kind() != reflect.Struct {
 		return newUserError("Not a struct", vd.parent, "") // if not struct we immediately return an error
 	}
@@ -117,17 +124,17 @@ FieldLoop:
 		// checks for field [optional] and [required]
 		if vd.f.v.IsZero() {
 			for _, ru := range vd.f.rules {
-				if ru == required { // i.e. if zero and required we append a error
+				if ru == ruleRequired { // i.e. if zero and required we append a error
 					vd.errs.Append(newFieldValidateError("Required field not found", "", vd.parent, vd.f))
 					continue FieldLoop // we continue the outer loop
 				}
-				if ru == optional {
+				if ru == ruleOptional {
 					continue FieldLoop // its zero and optional so we can continue without checks
 				}
 			}
 		}
 		// handles dive here
-		if slices.Contains(vd.f.rules, dive) {
+		if slices.Contains(vd.f.rules, ruleDive) {
 			if vd.f.kind != reflect.Slice && vd.f.kind != reflect.Array {
 				vd.errs.Append(newUserError("dive can be only used on  slices and arrays", vd.parent, vd.f.fieldName))
 				continue
@@ -165,29 +172,10 @@ func loopHelper(vd *validator) {
 // handles the rules without a equal-to sign, required, email, etc.
 func (vd *validator) handleNonEqRules(rule string) ValidationError {
 	var err ValidationError
-	switch rule { // written a theory at the end of this function to make this cleaner
-	case required: // we handled it before. so no need of it here
-	case optional:
-	case dive: // we handled it before calling this function
-	case email:
-		err = emailRx.validate(vd)
-	case e164:
-		err = e164Rx.validate(vd)
-	case url:
-		err = urlRx.validate(vd)
-	case uuid:
-		err = uuidRx.validate(vd)
-	case alpha:
-		err = alphaRx.validate(vd)
-	case alphanum:
-		err = alphanumRx.validate(vd)
-	case numeric:
-		err = numericRx.validate(vd)
-	case ipv4:
-		err = ipv4Rx.validate(vd)
-	case ipv6:
-		err = ipv6Rx.validate(vd)
-	default: // eqRules here, min,max,lte,gte,etc.
+	svd, ok := nonEqStrRules[rule]
+	if ok {
+		err = vd.validateNonEqRuleStr(rule, svd)
+	} else {
 		cd, ok := customValidations[rule] // checking if it is a custom rule
 		if ok {
 			err = cd.Validate(&vd.f, vd.parent, vd.f.v.Interface())
@@ -195,15 +183,9 @@ func (vd *validator) handleNonEqRules(rule string) ValidationError {
 			err = vd.handleEqRules(rule) // rule: min=2
 		}
 	}
+
 	return err
 }
-
-// there is technically a way to make the above function cleaner and shorter.
-// that is by not using a big switch statement and repeating myself with the function calls.
-// I could make separate types for nonEq and eq and then loop against every possible rule
-// and call the validate function just once. that would work but that would make it more messier
-// according to my option that is. So I will let this one slide.
-// It is a bit of repeating but it keeps things separated.
 
 func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	var isCollection = vd.f.kind == reflect.Slice || vd.f.kind == reflect.Array || vd.f.kind == reflect.Map || vd.f.kind == reflect.String
