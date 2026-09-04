@@ -5,12 +5,14 @@ type CustomValidator interface {
 	Validate(f *field, parent string, value any) ValidationError
 }
 
+// Do not mutate/write at runtime
 var customValidations = map[string]CustomValidator{}
 
 type customValidator[T any] struct {
 	fn func(value T) error
 }
 
+// wrapper to satisfy the interface [CustomValidator]
 func (cd customValidator[T]) Validate(f *field, parent string, value any) ValidationError {
 	val, ok := value.(T)
 	if !ok {
