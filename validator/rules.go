@@ -6,6 +6,7 @@ import (
 	"regexp"
 )
 
+// ? ----- Utils -----
 func runeIsUpper(r rune) (b bool) {
 	if r >= 65 && r <= 90 {
 		b = true
@@ -57,6 +58,8 @@ type manVal struct {
 func (mv manVal) Validate(s string) bool {
 	return mv.fn(s)
 }
+
+// ? ----- Rules -----
 
 type nonEqRule = string
 
