@@ -67,19 +67,12 @@ type field struct {
 	fieldName string
 }
 
-var testCacheMap = map[reflect.Type]int{}
-
 func (vd *validator) init(isNested bool) ValidationError {
 	vd.rv = reflect.ValueOf(vd.target)
 	if vd.rv.Kind() == reflect.Pointer { // if v is a pointer then we dereference it
 		vd.rv = vd.rv.Elem()
 	}
 	vd.rt = vd.rv.Type()
-	if _, ok := testCacheMap[vd.rt]; ok {
-		println("CACHED TYPE")
-	} else {
-		testCacheMap[vd.rt] = 0
-	}
 	if vd.rt.Kind() != reflect.Struct {
 		return newUserError("Not a struct", vd.parent, "") // if not struct we immediately return an error
 	}
