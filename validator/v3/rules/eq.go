@@ -58,3 +58,8 @@ var (
 		return slices.Contains(param, value)
 	}
 )
+
+// ? ----- Switch Func-----
+
+// No switch function for eq rules because most functions 
+// take different parameters and its not unique

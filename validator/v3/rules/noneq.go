@@ -90,6 +90,8 @@ func loopStr(s string, fn func(c rune) bool) bool {
 // ? ----- Switch Func-----
 
 // Returns the specific validator function for the rule. Panics on invalid rule
+// 
+// Only works on rules which take a string for input and return bool depending on the validation
 func (nr nonEqRule) Validator() func(s string) bool {
 	switch nr {
 	case Email:
