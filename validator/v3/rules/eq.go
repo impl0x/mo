@@ -61,5 +61,5 @@ var (
 
 // ? ----- Switch Func-----
 
-// No switch function for eq rules because most functions 
+// No switch function for eq rules because most functions
 // take different parameters and its not unique
