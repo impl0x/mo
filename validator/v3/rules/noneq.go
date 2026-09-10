@@ -7,26 +7,26 @@ import "regexp"
 // for example: "required,email"
 
 // these are all nonEq rules
-type nonEqRule string
+type NonEqRule = string
 
 const (
 	// the below 2 rules are special and have to be validated
 	// by the validator on the go and cannot be expressed as a function
 
-	Required nonEqRule = "required" // INFO: field must be present and not have its zero value. TYPE: any
-	Optional nonEqRule = "optional" // INFO: skips validation if empty. TYPE: any
+	Required NonEqRule = "required" // INFO: field must be present and not have its zero value. TYPE: any
+	Optional NonEqRule = "optional" // INFO: skips validation if empty. TYPE: any
 
-	Email    nonEqRule = "email"    // INFO: must satisfy email format. TYPE: string
-	E164     nonEqRule = "e.164"    // INFO: must satisfy phone number format. TYPE: string
-	Url      nonEqRule = "url"      // INFO: must satisfy url format. TYPE: string
-	Uuid     nonEqRule = "uuid"     // INFO: must satisfy uuid format. TYPE: string
-	Alpha    nonEqRule = "alpha"    // INFO: must be only alphabets. TYPE: string
-	Alphanum nonEqRule = "alphanum" // INFO: must be only alphabets or numbers. TYPE: string
-	Numeric  nonEqRule = "numeric"  // INFO: must be only a number. TYPE: string
-	Ipv4     nonEqRule = "ipv4"     // INFO: must satisfy ipv4 format. TYPE: string
-	Ipv6     nonEqRule = "ipv6"     // INFO: must satisfy ipv6 format. TYPE: string
+	Email    NonEqRule = "email"    // INFO: must satisfy email format. TYPE: string
+	E164     NonEqRule = "e.164"    // INFO: must satisfy phone number format. TYPE: string
+	Url      NonEqRule = "url"      // INFO: must satisfy url format. TYPE: string
+	Uuid     NonEqRule = "uuid"     // INFO: must satisfy uuid format. TYPE: string
+	Alpha    NonEqRule = "alpha"    // INFO: must be only alphabets. TYPE: string
+	Alphanum NonEqRule = "alphanum" // INFO: must be only alphabets or numbers. TYPE: string
+	Numeric  NonEqRule = "numeric"  // INFO: must be only a number. TYPE: string
+	Ipv4     NonEqRule = "ipv4"     // INFO: must satisfy ipv4 format. TYPE: string
+	Ipv6     NonEqRule = "ipv6"     // INFO: must satisfy ipv6 format. TYPE: string
 
-	Dive nonEqRule = "dive" // INFO: dives into a slice/array and validates all other rules. TYPE: slice | array
+	Dive NonEqRule = "dive" // INFO: dives into a slice/array and validates all other rules. TYPE: slice | array
 )
 
 // ? ----- Validation functions -----
@@ -90,9 +90,9 @@ func loopStr(s string, fn func(c rune) bool) bool {
 // ? ----- Switch Func-----
 
 // Returns the specific validator function for the rule. Panics on invalid rule
-// 
+//
 // Only works on rules which take a string for input and return bool depending on the validation
-func (nr nonEqRule) Validator() func(s string) bool {
+func NonEqRuleToFunc(nr NonEqRule) func(s string) bool {
 	switch nr {
 	case Email:
 		return FnEmail
