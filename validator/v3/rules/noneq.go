@@ -10,8 +10,9 @@ import "regexp"
 type NonEqRule = string
 
 const (
-	// the below 2 rules are special and have to be validated
-	// by the validator on the go and cannot be expressed as a function
+	// required, optional and dive are special and have to be validated
+	// by the validator on the go at runtime on each validation request
+	// and cannot be expressed as a function directly
 
 	Required NonEqRule = "required" // INFO: field must be present and not have its zero value. TYPE: any
 	Optional NonEqRule = "optional" // INFO: skips validation if empty. TYPE: any
