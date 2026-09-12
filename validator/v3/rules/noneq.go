@@ -90,7 +90,7 @@ func loopStr(s string, fn func(c rune) bool) bool {
 
 // ? ----- Switch Func-----
 
-// Returns the specific validator function for the rule. Panics on invalid rule
+// Returns the specific validator function for the rule. returns nil on invalid rule
 //
 // Only works on rules which take a string for input and return bool depending on the validation
 func NonEqRuleToFunc(nr NonEqRule) func(s string) bool {
@@ -114,6 +114,6 @@ func NonEqRuleToFunc(nr NonEqRule) func(s string) bool {
 	case Ipv6:
 		return FnIpv6
 	default:
-		panic("rules.nonEqRule.Validator: invalid nonEqRule passed, function does not exist for " + nr)
+		return nil
 	}
 }
