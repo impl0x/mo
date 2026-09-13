@@ -88,7 +88,7 @@ func loopStr(s string, fn func(c rune) bool) bool {
 	return b
 }
 
-// ? ----- Switch Func-----
+// ? ----- Mapping Func-----
 
 // Returns the specific validator function for the rule. returns nil on invalid rule
 //
@@ -115,5 +115,30 @@ func NonEqRuleToFunc(nr NonEqRule) func(s string) bool {
 		return FnIpv6
 	default:
 		return nil
+	}
+}
+
+func NonEqRuleToErrMsg(nr NonEqRule) string {
+	switch nr {
+	case Email:
+		return "Invalid valid email address"
+	case E164:
+		return "Invalid valid e.164 string"
+	case Url:
+		return "Invalid valid url address"
+	case Uuid:
+		return "Invalid UUID string"
+	case Alpha:
+		return "String must only contain alphabets"
+	case Alphanum:
+		return "String must only contain alphabets or numbers"
+	case Numeric:
+		return "String must only contain numbers"
+	case Ipv4:
+		return "Invalid ipv4 address"
+	case Ipv6:
+		return "Invalid ipv6 address"
+	default:
+		return ""
 	}
 }

@@ -59,7 +59,7 @@ var (
 	}
 )
 
-// ? ----- Switch Func-----
+// ? ----- Mapping Func-----
 
-// No switch function for eq rules because most functions
+// No mapping function for eq rules because most functions
 // take different parameters and its not unique
