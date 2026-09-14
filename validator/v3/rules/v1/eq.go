@@ -1,0 +1,122 @@
+package rules
+
+import (
+	"reflect"
+	"slices"
+	"strings"
+)
+
+type EqRule struct {
+	Name             string
+	FieldTypes       []reflect.Kind
+	ParamTypes       []reflect.Kind
+	FnErrMsgTemplate func(param string) string
+}
+
+var (
+	// value/length must be minimum of [param]
+	Min = EqRule{
+		"min",
+		slices.Concat(TypeString, TypeCollection, TypeNumeric),
+		TypeNumeric,
+		func(param string) string { return "must be minimum of " + param },
+	}
+	// value/length must be maximum of [param]
+	Max = EqRule{
+		"max",
+		slices.Concat(TypeString, TypeCollection, TypeNumeric),
+		TypeNumeric,
+		func(param string) string { return "must be maximum of " + param },
+	}
+	// value/length must be less than or equal to [param].
+	Lte = EqRule{
+		"lte",
+		slices.Concat(TypeString, TypeCollection, TypeNumeric),
+		TypeNumeric,
+		func(param string) string { return "must be less than or equal to " + param },
+	}
+	// value/length must be greater than or equal to [param].
+	Gte = EqRule{
+		"gte",
+		slices.Concat(TypeString, TypeCollection, TypeNumeric),
+		TypeNumeric,
+		func(param string) string { return "must be greater than or equal to" + param },
+	}
+	// value/length must be less than [param].
+	Lt = EqRule{
+		"lt",
+		slices.Concat(TypeString, TypeCollection, TypeNumeric),
+		TypeNumeric,
+		func(param string) string { return "must be less than " + param },
+	}
+	// value/length must be greater than [param] length/value.
+	Gt = EqRule{
+		"gt",
+		slices.Concat(TypeString, TypeCollection, TypeNumeric),
+		TypeNumeric,
+		func(param string) string { return "must be greater than " + param },
+	}
+	// length must be equal to [param].
+	Len = EqRule{
+		"len",
+		slices.Concat(TypeString, TypeCollection),
+		TypeUInt,
+		func(param string) string { return "Length must be equal to " + param },
+	}
+	// string must end with [param].
+	StartsWith = EqRule{
+		"startswith",
+		TypeString,
+		TypeString,
+		func(param string) string { return "String must start with " + param },
+	}
+	// string must one of [param].
+	EndsWith = EqRule{
+		"endswith",
+		TypeString,
+		TypeString,
+		func(param string) string { return "String must end with " + param },
+	}
+	OneOf = EqRule{
+		"oneof",
+		TypeString,
+		TypeString,
+		func(param string) string { return "String must be one of " + param },
+	}
+)
+
+
+// ? ----- Validation functions -----
+//
+// these funcs are just one line bool returns but i wrote this to have them rule logic separated from reflection and validator logic
+// value is the field value in the struct and param is the tag parameter
+// example: in a field username string `validate:"min=2", where username is populated with "test" in a instance,
+// value will be len("test") = 4 and param will be 2 from the "min=2" tag.
+var (
+	FnMin = func(value float64, param float64) bool {
+		return value > param
+	}
+	FnMax = func(value float64, param float64) bool {
+		return value < param
+	}
+	FnGte = FnMin // logically the same function
+	FnLte = FnMax // ~
+	FnLt  = func(value float64, param float64) bool {
+		return value <= param
+	}
+	FnGt = func(value float64, param float64) bool {
+		return value >= param
+	}
+	FnLen = func(value int, param int) bool {
+		return value == param
+	}
+	FnStartswith = func(value string, param string) bool {
+		return strings.HasPrefix(value, param)
+	}
+	FnEndswith = func(value string, param string) bool {
+		return strings.HasSuffix(value, param)
+	}
+	FnOneof = func(value string, param []string) bool {
+		return slices.Contains(param, value)
+	}
+)
