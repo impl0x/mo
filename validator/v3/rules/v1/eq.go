@@ -13,78 +13,102 @@ type EqRule struct {
 	FnErrMsgTemplate func(param string) string
 }
 
+func (er EqRule) String() string {
+	return er.Name
+}
+
+func (er EqRule) AcceptedFieldTypes() []reflect.Kind {
+	return er.FieldTypes
+}
+
+func (er EqRule) IsNil() bool {
+	return er.Name == ""
+}
+
+const (
+	RuleMin        = "min"
+	RuleMax        = "max"
+	RuleLte        = "lte"
+	RuleGte        = "gte"
+	RuleLt         = "lt"
+	RuleGt         = "gt"
+	RuleLen        = "len"
+	RuleStartswith = "startswith"
+	RuleEndswith   = "endswith"
+	RuleOneof      = "oneof"
+)
+
 var (
 	// value/length must be minimum of [param]
 	Min = EqRule{
-		"min",
+		RuleMin,
 		slices.Concat(TypeString, TypeCollection, TypeNumeric),
 		TypeNumeric,
 		func(param string) string { return "must be minimum of " + param },
 	}
 	// value/length must be maximum of [param]
 	Max = EqRule{
-		"max",
+		RuleMax,
 		slices.Concat(TypeString, TypeCollection, TypeNumeric),
 		TypeNumeric,
 		func(param string) string { return "must be maximum of " + param },
 	}
 	// value/length must be less than or equal to [param].
 	Lte = EqRule{
-		"lte",
+		RuleLte,
 		slices.Concat(TypeString, TypeCollection, TypeNumeric),
 		TypeNumeric,
 		func(param string) string { return "must be less than or equal to " + param },
 	}
 	// value/length must be greater than or equal to [param].
 	Gte = EqRule{
-		"gte",
+		RuleGte,
 		slices.Concat(TypeString, TypeCollection, TypeNumeric),
 		TypeNumeric,
 		func(param string) string { return "must be greater than or equal to" + param },
 	}
 	// value/length must be less than [param].
 	Lt = EqRule{
-		"lt",
+		RuleLt,
 		slices.Concat(TypeString, TypeCollection, TypeNumeric),
 		TypeNumeric,
 		func(param string) string { return "must be less than " + param },
 	}
 	// value/length must be greater than [param] length/value.
 	Gt = EqRule{
-		"gt",
+		RuleGt,
 		slices.Concat(TypeString, TypeCollection, TypeNumeric),
 		TypeNumeric,
 		func(param string) string { return "must be greater than " + param },
 	}
 	// length must be equal to [param].
 	Len = EqRule{
-		"len",
+		RuleLen,
 		slices.Concat(TypeString, TypeCollection),
 		TypeUInt,
 		func(param string) string { return "Length must be equal to " + param },
 	}
 	// string must end with [param].
 	StartsWith = EqRule{
-		"startswith",
+		RuleStartswith,
 		TypeString,
 		TypeString,
 		func(param string) string { return "String must start with " + param },
 	}
 	// string must one of [param].
 	EndsWith = EqRule{
-		"endswith",
+		RuleEndswith,
 		TypeString,
 		TypeString,
 		func(param string) string { return "String must end with " + param },
 	}
 	OneOf = EqRule{
-		"oneof",
+		RuleOneof,
 		TypeString,
 		TypeString,
 		func(param string) string { return "String must be one of " + param },
 	}
 )
-
 
 // ? ----- Validation functions -----
 //
@@ -120,3 +144,30 @@ var (
 		return slices.Contains(param, value)
 	}
 )
+
+func EqHit(ruleName string) EqRule {
+	switch ruleName {
+	case "min":
+		return Min
+	case "max":
+		return Max
+	case "gte":
+		return Gte
+	case "lte":
+		return Lte
+	case "lt":
+		return Lt
+	case "gt":
+		return Gt
+	case "len":
+		return Len
+	case "startswith":
+		return StartsWith
+	case "endswith":
+		return EndsWith
+	case "oneof":
+		return OneOf
+	default:
+		return EqRule{}
+	}
+}

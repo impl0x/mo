@@ -55,3 +55,5 @@ var TypeFloat = []reflect.Kind{
 var TypeString = []reflect.Kind{
 	reflect.String,
 }
+
+var TypeAny = []reflect.Kind{}
