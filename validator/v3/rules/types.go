@@ -2,7 +2,12 @@ package rules
 
 import (
 	"reflect"
+	"slices"
 )
+
+type Rule interface {
+	String() string
+}
 
 // ? ----- Documentation helper types -----
 // These variables are of no use to the package itself but are just present for documentation purposes only
@@ -13,7 +18,7 @@ import (
 //   - Map
 //
 // If a rule accepts only [TypeCollection] then anything else will return an user error and not be validated
-var TypeCollection = [...]reflect.Kind{
+var TypeCollection = []reflect.Kind{
 	reflect.Slice,
 	reflect.Array,
 	reflect.Map,
@@ -25,18 +30,30 @@ var TypeCollection = [...]reflect.Kind{
 //   - Float32, Float64
 //
 // If a rule accepts only [TypeNumeric] then anything else will return an user error and not be validated
-var TypeNumeric = [...]reflect.Kind{
+var TypeNumeric = slices.Concat(TypeInt, TypeUInt, TypeFloat)
+
+var TypeInt = []reflect.Kind{
 	reflect.Int,
 	reflect.Int8,
 	reflect.Int16,
 	reflect.Int32,
 	reflect.Int64,
+}
+var TypeUInt = []reflect.Kind{
 	reflect.Uint,
 	reflect.Uint8,
 	reflect.Uint16,
 	reflect.Uint32,
 	reflect.Uint64,
+}
+
+var TypeFloat = []reflect.Kind{
 	reflect.Float32,
 	reflect.Float64,
-	reflect.Uintptr,
 }
+
+var TypeString = []reflect.Kind{
+	reflect.String,
+}
+
+var TypeAny = []reflect.Kind{}

@@ -1,33 +1,123 @@
 package rules
 
-import "regexp"
+import (
+	"reflect"
+	"regexp"
+)
 
-// ? ----- Non Eq Rules -----
-// ! Non Eq rules mean the tag validation rules which have only one word,
-// for example: "required,email"
+type NonEqRule struct {
+	Name       string
+	FieldTypes []reflect.Kind
+	ErrMsg     string
+	Validate   func(s string) bool
+}
 
-// these are all nonEq rules
-type NonEqRule = string
+func (nr NonEqRule) IsNil() bool {
+	return nr.Name == ""
+}
+
+func (nr NonEqRule) String() string {
+	return nr.Name
+}
+
+func (nr NonEqRule) AcceptedFieldTypes() []reflect.Kind {
+	return nr.FieldTypes
+}
 
 const (
 	// required, optional and dive are special and have to be validated
 	// by the validator on the go at runtime on each validation request
 	// and cannot be expressed as a function directly
 
-	Required NonEqRule = "required" // INFO: field must be present and not have its zero value. TYPE: any
-	Optional NonEqRule = "optional" // INFO: skips validation if empty. TYPE: any
+	RuleRequired = "required"
+	RuleOptional = "optional"
 
-	Email    NonEqRule = "email"    // INFO: must satisfy email format. TYPE: string
-	E164     NonEqRule = "e.164"    // INFO: must satisfy phone number format. TYPE: string
-	Url      NonEqRule = "url"      // INFO: must satisfy url format. TYPE: string
-	Uuid     NonEqRule = "uuid"     // INFO: must satisfy uuid format. TYPE: string
-	Alpha    NonEqRule = "alpha"    // INFO: must be only alphabets. TYPE: string
-	Alphanum NonEqRule = "alphanum" // INFO: must be only alphabets or numbers. TYPE: string
-	Numeric  NonEqRule = "numeric"  // INFO: must be only a number. TYPE: string
-	Ipv4     NonEqRule = "ipv4"     // INFO: must satisfy ipv4 format. TYPE: string
-	Ipv6     NonEqRule = "ipv6"     // INFO: must satisfy ipv6 format. TYPE: string
+	RuleEmail    = "email"
+	RuleE164     = "e.164"
+	RuleUrl      = "url"
+	RuleUuid     = "uuid"
+	RuleAlpha    = "alpha"
+	RuleAlphanum = "alphanum"
+	RuleNumeric  = "numeric"
+	RuleIpv4     = "ipv4"
+	RuleIpv6     = "ipv6"
 
-	Dive NonEqRule = "dive" // INFO: dives into a slice/array and validates all other rules. TYPE: slice | array
+	RuleDive = "dive"
+)
+
+var (
+	Required = NonEqRule{
+		RuleRequired,
+		TypeAny,
+		"Required field not found",
+		nil,
+	}
+	Optional = NonEqRule{
+		RuleOptional,
+		TypeAny,
+		"",
+		nil,
+	}
+	Dive = NonEqRule{
+		RuleDive,
+		TypeCollection,
+		"",
+		nil,
+	}
+	Email = NonEqRule{
+		RuleEmail,
+		TypeString,
+		"Invalid email",
+		FnEmail,
+	}
+	E164 = NonEqRule{
+		RuleE164,
+		TypeString,
+		"Invalid e.164 string",
+		FnE164,
+	}
+	Url = NonEqRule{
+		RuleUrl,
+		TypeString,
+		"Invalid URL address",
+		FnUrl,
+	}
+	Uuid = NonEqRule{
+		RuleUuid,
+		TypeString,
+		"Invalid UUID string",
+		FnUuid,
+	}
+	Alpha = NonEqRule{
+		RuleAlpha,
+		TypeString,
+		"String must only contain alphabets",
+		FnAlpha,
+	}
+	AlphaNum = NonEqRule{
+		RuleAlphanum,
+		TypeString,
+		"String must only contain alphabets or numbers",
+		FnAlphanum,
+	}
+	Numeric = NonEqRule{
+		RuleNumeric,
+		TypeString,
+		"String must only contain numbers",
+		FnNumeric,
+	}
+	Ipv4 = NonEqRule{
+		RuleIpv4,
+		TypeString,
+		"Invalid IPv4 address",
+		FnIpv4,
+	}
+	Ipv6 = NonEqRule{
+		RuleIpv6,
+		TypeString,
+		"Invalid IPv6 address",
+		FnIpv6,
+	}
 )
 
 // ? ----- Validation functions -----
@@ -88,57 +178,31 @@ func loopStr(s string, fn func(c rune) bool) bool {
 	return b
 }
 
-// ? ----- Mapping Func-----
-
-// Returns the specific validator function for the rule. returns nil on invalid rule
-//
-// Only works on rules which take a string for input and return bool depending on the validation
-func NonEqRuleToFunc(nr NonEqRule) func(s string) bool {
-	switch nr {
-	case Email:
-		return FnEmail
-	case E164:
-		return FnE164
-	case Url:
-		return FnUrl
-	case Uuid:
-		return FnUuid
-	case Alpha:
-		return FnAlpha
-	case Alphanum:
-		return FnAlphanum
-	case Numeric:
-		return FnNumeric
-	case Ipv4:
-		return FnIpv4
-	case Ipv6:
-		return FnIpv6
+func NonEqHit(ruleName string) NonEqRule {
+	switch ruleName {
+	case "required":
+		return Required
+	case "optional":
+		return Optional
+	case "email":
+		return Email
+	case "e.164":
+		return E164
+	case "url":
+		return Url
+	case "uuid":
+		return Uuid
+	case "alpha":
+		return Alpha
+	case "alphanum":
+		return AlphaNum
+	case "numeric":
+		return Numeric
+	case "ipv4":
+		return Ipv4
+	case "ipv6":
+		return Ipv6
 	default:
-		return nil
-	}
-}
-
-func NonEqRuleToErrMsg(nr NonEqRule) string {
-	switch nr {
-	case Email:
-		return "Invalid valid email address"
-	case E164:
-		return "Invalid valid e.164 string"
-	case Url:
-		return "Invalid valid url address"
-	case Uuid:
-		return "Invalid UUID string"
-	case Alpha:
-		return "String must only contain alphabets"
-	case Alphanum:
-		return "String must only contain alphabets or numbers"
-	case Numeric:
-		return "String must only contain numbers"
-	case Ipv4:
-		return "Invalid ipv4 address"
-	case Ipv6:
-		return "Invalid ipv6 address"
-	default:
-		return ""
+		return NonEqRule{}
 	}
 }
