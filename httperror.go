@@ -1,20 +1,11 @@
 package mo
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
 )
 
-// If you are implementing this interface and using the default http error handler then
-// make sure that the struct is json compatible because its going to be sent directly to the json encoder
-type HTTPError interface {
-	StatusCode() int
-	error
-}
-
-// To return a custom formatted message, return a struct implementing HTTPError
-// Or just return c.Json with a statusCode
-// Or just define a custom function for yourself, anything works.
+// Returns a new instance with the code and message.
 func NewHttpError(code int, message string) HttpError {
 	return HttpError{
 		Code:    code,
@@ -22,17 +13,23 @@ func NewHttpError(code int, message string) HttpError {
 	}
 }
 
-// error occurred during request lifecycle
+// Used by the router and also by the user if they want to.
+// to be used by value
 type HttpError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+}
+
+// checks if a error is empty
+func (h HttpError) IsNil() bool {
+	return h.Code == 0
 }
 
 func (h HttpError) StatusCode() int {
 	return h.Code
 }
 func (h HttpError) Error() string {
-	return fmt.Sprintf("code=%d, message=%v", h.Code, h.Message)
+	return "code=" + strconv.Itoa(h.Code) + " message=" + h.Message
 }
 
 // common http errors with the default status code text

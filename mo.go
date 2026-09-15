@@ -78,22 +78,18 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.response = newResponse(w, &m.Headers)
 	c.ResponseHeaders = NewHeadersManager()
 	c.Mo = m
-	// we clear the prev maps
-	clear(c.store)
-	clear(c.params)
+	// we clear the prev store
+	c.store.clear()
 
 	route, err := m.router.Find(c, r.URL.Path, r.Method)
-	if err != nil {
-		m.HTTPErrorHandler(c, err) // either Method wrong or path Not found
+	if err.IsNil() {
+		c.JSON(err.Code, err) // either Method wrong or path Not found, either way we return a json error
 	} else {
 		h := route.Handler
 		for _, v := range slices.Backward(m.Middlewares) { // wrapping with global middlewares
 			h = v(h)
 		}
-		for _, v := range slices.Backward(route.Middlewares) { // wrapping with route specific middlewares
-			h = v(h)
-		}
-		m.HTTPErrorHandler(c, h(c)) // finally we run the handler and pass the result to the error handler
+		m.HTTPErrorHandler(c, h(c)) // run the handler and pass the result to the error handler
 		if !c.response.committed {  // if user didn't write a response we by default send a no content status code response
 			c.NoContent(http.StatusNoContent) // ignore error, returns nil always
 		}
@@ -105,31 +101,35 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	contextPool.Put(c)
 }
 
-func (m *Mo) add(path string, method string, handler HandlerFunc, mi []Middleware) *Route {
-	r := &Route{path, method, handler, mi}
+// middleware is added in the format of (innermost, ... , outermost)
+func (m *Mo) add(path string, method string, handler HandlerFunc, mi []Middleware) RouteInfo {
+	for _, mw := range mi {
+		handler = mw(handler)
+	}
+	r := RouteInfo{path, method, handler}
 	m.router.Add(r)
 	return r
 }
 
-func (m *Mo) GET(path string, handler HandlerFunc, mi ...Middleware) *Route {
+func (m *Mo) GET(path string, handler HandlerFunc, mi ...Middleware) RouteInfo {
 	return m.add(path, http.MethodGet, handler, mi)
 }
-func (m *Mo) POST(path string, handler HandlerFunc, mi ...Middleware) *Route {
+func (m *Mo) POST(path string, handler HandlerFunc, mi ...Middleware) RouteInfo {
 	return m.add(path, http.MethodPost, handler, mi)
 }
-func (m *Mo) PATCH(path string, handler HandlerFunc, mi ...Middleware) *Route {
+func (m *Mo) PATCH(path string, handler HandlerFunc, mi ...Middleware) RouteInfo {
 	return m.add(path, http.MethodPatch, handler, mi)
 }
-func (m *Mo) PUT(path string, handler HandlerFunc, mi ...Middleware) *Route {
+func (m *Mo) PUT(path string, handler HandlerFunc, mi ...Middleware) RouteInfo {
 	return m.add(path, http.MethodPut, handler, mi)
 }
-func (m *Mo) OPTIONS(path string, handler HandlerFunc, mi ...Middleware) *Route {
+func (m *Mo) OPTIONS(path string, handler HandlerFunc, mi ...Middleware) RouteInfo {
 	return m.add(path, http.MethodOptions, handler, mi)
 }
-func (m *Mo) DELETE(path string, handler HandlerFunc, mi ...Middleware) *Route {
+func (m *Mo) DELETE(path string, handler HandlerFunc, mi ...Middleware) RouteInfo {
 	return m.add(path, http.MethodDelete, handler, mi)
 }
-func (m *Mo) HEAD(path string, handler HandlerFunc, mi ...Middleware) *Route {
+func (m *Mo) HEAD(path string, handler HandlerFunc, mi ...Middleware) RouteInfo {
 	return m.add(path, http.MethodHead, handler, mi)
 }
 
@@ -144,8 +144,8 @@ func (m *Mo) HEAD(path string, handler HandlerFunc, mi ...Middleware) *Route {
 //	m.Start(":8080") // starts the server
 //
 // Add middlewares using "Use" before registering paths
-func (m *Mo) Group(prefix string, mi ...Middleware) *Grouped {
-	return &Grouped{
+func (m *Mo) Group(prefix string, mi ...Middleware) Grouped {
+	return Grouped{
 		prefix:      prefix,
 		Middlewares: mi,
 		m:           m,

@@ -91,7 +91,7 @@ func (mh *methodHandlers) add(method string, handler HandlerFunc) {
 	}
 }
 
-// We use pass by value in this method because we are not mutating 
+// We use pass by value in this method because we are not mutating
 // anything to the original instance and the struct is small enough
 // to be passed by value, and also because this method is used on
 // the find method by the router so it reduces a pointer lookup.
@@ -241,21 +241,21 @@ Outer:
 		// if not found any static child we look for param child
 		if currNode.paramChild != nil {
 			currNode = currNode.paramChild
-			c.params[currNode.segment[1:]] = segment
+			c.store.Params[currNode.segment[1:]] = segment
 			continue Outer
 		}
 		// if not param we look for wildcard child
 		if currNode.wildcardChild != nil {
 			currNode = currNode.wildcardChild
-			c.params["*"] = segment + remainder // allocates on the heap but its okay as wildcard paths are rare, not important to optimize as of now
-			break Outer                         // if it is wildcard match we do not traverse any longer and exit early
+			c.store.Params["*"] = remainder
+			break Outer // if it is wildcard match we do not traverse any longer and exit early
 		}
 		// if there is no static, no param and no wildcards. Then its a dead end.
 		return RouteInfo{}, ErrNotFound
 	}
 	// means there is a node without a handler. it just means not found for the user
 	// the node exists but lacks functionality
-	if !currNode.isHandler{
+	if !currNode.isHandler {
 		return RouteInfo{}, ErrNotFound // no handlers were ever registered for this node.
 	}
 	handler := currNode.methods.fromString(method)

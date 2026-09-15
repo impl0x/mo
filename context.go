@@ -3,32 +3,43 @@ package mo
 import (
 	"encoding/json/v2"
 	"errors"
-	"maps"
 	"net/http"
 	"net/url"
 	"reflect"
 	"sync"
 
 	"github.com/impl0x/mo/modules/logger"
-	"github.com/impl0x/mo/validator"
+	// "github.com/impl0x/mo/validator"
 )
 
 var contextPool = sync.Pool{
 	New: func() any {
 		return &Context{
-			store:  make(map[string]any),
-			params: make(map[string]string),
+			store: ContextStore{
+				Store:  make(map[string]any),
+				Params: make(map[string]string),
+			},
 		}
 	},
 }
 
+// stores context values, usually used inside an context instance. It is not goroutine safe, do not pass same mo context to multiple goroutines. otherwise your pc might blow up
+type ContextStore struct {
+	Store  map[string]any
+	Params map[string]string
+}
+
+func (cs *ContextStore) clear() {
+	clear(cs.Params)
+	clear(cs.Params)
+}
+
 type Context struct {
+	Mo              *Mo // original Mo instance
 	request         *http.Request
 	response        Response
 	ResponseHeaders HeadersManager // Sends headers with the response for this request
-	Mo              *Mo            // original Mo instance
-	store           map[string]any // stores context values
-	params          map[string]string
+	store           ContextStore
 }
 
 func (c *Context) writeContentType(value string) {
@@ -89,9 +100,16 @@ func (c *Context) QueryParams() url.Values {
 	return c.request.URL.Query()
 }
 
-// Returns the url parameter, ex: "users/:id", c.Param("id") will give the value for the
+// Returns the url parameter, for example if "/users/:id" was registered as a path
+// and a request arrives with the path "/users/123", c.Param("id") will return "123" in this case
+//
+// this also works for wildcard paths, "users/*", "users/123/comments". c.Param("*")="123/comments"
+//   - parameter path key: registered key when adding the path, ":id", ":userid", etc becomes "id","userid"
+//   - wildcard path key: "*", returns the whole path received after the last static/param path.
+//
+// note: not goroutine safe, do not pass same mo context to multiple goroutines, if doing so manage your own lock.
 func (c *Context) Param(key string) (string, bool) {
-	v, ok := c.params[key]
+	v, ok := c.store.Params[key]
 	return v, ok
 }
 
@@ -101,20 +119,20 @@ var ErrNonExistentKey = errors.New("non existent key")
 // ErrInvalidKeyType is error that is returned when the value is not castable to expected type.
 var ErrInvalidKeyType = errors.New("invalid key type")
 
-// Adds a value to the context storage
+// Adds a value to the context storage, not goroutine safe.
 func (c *Context) Add(key string, value any) {
-	c.store[key] = value
+	c.store.Store[key] = value
 }
 
-// Gets a value from the context storage
+// Gets a value from the context storage, not goroutine safe
 func (c *Context) Get(key string) (any, bool) {
-	v, ok := c.store[key]
+	v, ok := c.store.Store[key]
 	return v, ok
 }
 
-// Gets a value from the context storage (typed)
-func (c *Context) ContextGet[T any](key string) (T, error) {
-	value, ok := c.store[key]
+// Gets a value from the context storage (typed), not goroutine safe
+func (c *Context) GetTyped[T any](key string) (T, error) {
+	value, ok := c.store.Store[key]
 	if !ok {
 		var zero T
 		return zero, ErrNonExistentKey
@@ -124,7 +142,6 @@ func (c *Context) ContextGet[T any](key string) (T, error) {
 		var zero T
 		return zero, ErrInvalidKeyType
 	}
-
 	return typed, nil
 }
 
@@ -132,14 +149,12 @@ func (c *Context) ContextGet[T any](key string) (T, error) {
 //
 // although it is not mandatory to delete all the items in store yourself as it is done automatically at the end but you can do it
 func (c *Context) Delete(key string) {
-	delete(c.store, key)
+	delete(c.store.Store, key)
 }
 
-// A shallow copy of the current store is returned
-//
-// try to avoid calling this as this has to create a copy of the entire map again if the map is large, use the Add, Get, Delete method present
+// the map instance is returned, try not to mutate as it might break internal mechanisms
 func (c *Context) Store() map[string]any {
-	return maps.Clone(c.store)
+	return c.store.Store
 }
 
 // Binds the *request* headers to a struct
@@ -151,7 +166,7 @@ func (c *Context) Store() map[string]any {
 //	token string `header:"authorization"`
 //
 // fields of the struct MUST be strings!
-func (c *Context) BindHeaders(target any) {
+func (c *Context) BindHeaders(target any) { // TODO: make reflection cached.
 	rv := reflect.ValueOf(target)
 	if rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
@@ -192,15 +207,15 @@ func (c *Context) DecodeBody(target any) error {
 	return json.UnmarshalRead(c.request.Body, target)
 }
 
-// Decodes the request body into a struct and validates that using [github.com/impl0x/mo/validator]
-func (c *Context) DecodeAndValidateBody(target any) error {
-	err := json.UnmarshalRead(c.request.Body, target)
-	if err != nil {
-		return err
-	}
-	errs := validator.Validate(target)
-	if errs != nil {
-		return errs
-	}
-	return nil
-}
+// // Decodes the request body into a struct and validates that using [github.com/impl0x/mo/validator]
+// func (c *Context) DecodeAndValidateBody(target any) error {
+// 	err := json.UnmarshalRead(c.request.Body, target)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	errs := validator.Validate(target)
+// 	if errs != nil {
+// 		return errs
+// 	}
+// 	return nil
+// }
