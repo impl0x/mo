@@ -88,21 +88,22 @@ var (
 		TypeUInt,
 		func(param string) string { return "Length must be equal to " + param },
 	}
-	// string must end with [param].
+	// string must start with [param].
 	StartsWith = EqRule{
 		RuleStartswith,
 		TypeString,
 		TypeString,
 		func(param string) string { return "String must start with " + param },
 	}
-	// string must one of [param].
+	// string must end with [param].
 	EndsWith = EqRule{
 		RuleEndswith,
 		TypeString,
 		TypeString,
 		func(param string) string { return "String must end with " + param },
 	}
-	OneOf = EqRule{
+	// string must be one of [param], separated by single space
+	Oneof = EqRule{
 		RuleOneof,
 		TypeString,
 		TypeString,
@@ -140,8 +141,19 @@ var (
 	FnEndswith = func(value string, param string) bool {
 		return strings.HasSuffix(value, param)
 	}
-	FnOneof = func(value string, param []string) bool {
-		return slices.Contains(param, value)
+	// splits the string based on spaces, multiple spaces are handled in case of typos
+	FnOneof = func(value string, param string) bool {
+		st := 0
+		param = param + " "
+		for i, c := range param {
+			if c == ' ' {
+				if st < i && param[st:i] == value {
+					return true
+				}
+				st = i + 1
+			}
+		}
+		return false
 	}
 )
 
@@ -166,7 +178,7 @@ func EqHit(ruleName string) EqRule {
 	case "endswith":
 		return EndsWith
 	case "oneof":
-		return OneOf
+		return Oneof
 	default:
 		return EqRule{}
 	}
