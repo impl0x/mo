@@ -6,70 +6,129 @@ import (
 )
 
 type Router interface {
-	Find(c *Context, path string, method string) (*Route, HTTPError) // finds the route, takes path, method
-	Add(*Route)                                                      // adds a route
+	Find(c *Context, path string, method string) (RouteInfo, HttpError) // finds the route, takes path, method
+	Add(RouteInfo)                                                      // adds a route
 }
 
-type routerConfig struct {
+type RouterConfig struct {
 	TrimSuffixSlashes bool // trims if there is a leading slash, ex: users/:id/ -> users/:id, remember these 2 are different paths if this option is not enabled.
 }
 
-var DefaultRouterConfig = routerConfig{true} // default config for the router
+var DefaultRouterConfig = RouterConfig{true} // default config for the router
 
-type Route struct {
-	Path        string       // the path for this route, read only do not mutate
-	Method      string       // the method for this route, read only do not mutate
-	Handler     HandlerFunc  // the handler which will be called, read only do not mutate
-	Middlewares []Middleware // returns a copy of slice, read only do not mutate, instead use the [Route.Use()] function
-}
-
-// o(n) and doesn't support dynamic routing
-type BasicRouter struct {
-	Routes []*Route
+type RouteInfo struct {
+	Path    string      // the path for this route, read only do not mutate
+	Method  string      // the method for this route, read only do not mutate
+	Handler HandlerFunc // the handler which will be called, read only do not mutate
 }
 
-func NewBasicRouter() *BasicRouter {
-	return &BasicRouter{}
-}
+// // o(n) and doesn't support dynamic routing
+// type BasicRouter struct {
+// 	Routes []*Route
+// }
 
-func (r *BasicRouter) Add(ro *Route) {
-	if ro.Path[0] != '/' {
-		ro.Path = "/" + ro.Path
-	}
-	if DefaultRouterConfig.TrimSuffixSlashes {
-		ro.Path = strings.TrimSuffix(ro.Path, "/")
-	}
-	r.Routes = append(r.Routes, ro)
-}
-func (r *BasicRouter) Find(_ *Context, path, method string) (*Route, HTTPError) {
-	for _, v := range r.Routes {
-		if path == v.Path {
-			if method == v.Method {
-				return v, nil
-			}
-			return nil, ErrMethodNotAllowed
-		}
-	}
-	return nil, ErrNotFound
-}
+// func NewBasicRouter() *BasicRouter {
+// 	return &BasicRouter{}
+// }
+
+// func (r *BasicRouter) Add(ro *Route) {
+// 	if ro.Path[0] != '/' {
+// 		ro.Path = "/" + ro.Path
+// 	}
+// 	if DefaultRouterConfig.TrimSuffixSlashes {
+// 		ro.Path = strings.TrimSuffix(ro.Path, "/")
+// 	}
+// 	r.Routes = append(r.Routes, ro)
+// }
+// func (r *BasicRouter) Find(_ *Context, path, method string) (*Route, HTTPError) {
+// 	for _, v := range r.Routes {
+// 		if path == v.Path {
+// 			if method == v.Method {
+// 				return v, nil
+// 			}
+// 			return nil, ErrMethodNotAllowed
+// 		}
+// 	}
+// 	return nil, ErrNotFound
+// }
 
 type methodHandlers struct {
-	totalHandlers uint8
-
 	get     HandlerFunc
 	post    HandlerFunc
 	put     HandlerFunc
 	patch   HandlerFunc
-	options HandlerFunc
-	head    HandlerFunc
 	delete  HandlerFunc
+	head    HandlerFunc
+	options HandlerFunc
+	connect HandlerFunc
+	trace   HandlerFunc
+	any     HandlerFunc
+}
+
+// if not a valid http method then a handler is set for "any" method, which triggers on any invalid http method.
+func (mh *methodHandlers) add(method string, handler HandlerFunc) {
+	switch method {
+	case http.MethodGet:
+		mh.get = handler
+	case http.MethodPost:
+		mh.post = handler
+	case http.MethodPut:
+		mh.put = handler
+	case http.MethodPatch:
+		mh.patch = handler
+	case http.MethodDelete:
+		mh.delete = handler
+	case http.MethodHead:
+		mh.head = handler
+	case http.MethodOptions:
+		mh.options = handler
+	case http.MethodConnect:
+		mh.connect = handler
+	case http.MethodTrace:
+		mh.trace = handler
+	default:
+		mh.any = handler
+	}
+}
+
+// We use pass by value in this method because we are not mutating 
+// anything to the original instance and the struct is small enough
+// to be passed by value, and also because this method is used on
+// the find method by the router so it reduces a pointer lookup.
+
+// Returns the method from the string name.
+func (mh methodHandlers) fromString(method string) HandlerFunc {
+	switch method {
+	case http.MethodGet:
+		return mh.get
+	case http.MethodPost:
+		return mh.post
+	case http.MethodPut:
+		return mh.put
+	case http.MethodPatch:
+		return mh.patch
+	case http.MethodDelete:
+		return mh.delete
+	case http.MethodHead:
+		return mh.head
+	case http.MethodOptions:
+		return mh.options
+	case http.MethodConnect:
+		return mh.connect
+	case http.MethodTrace:
+		return mh.trace
+	default:
+		return mh.any
+	}
 }
 
 type node struct {
-	path       string
-	handlers   methodHandlers
-	middleware []Middleware
-	children   []*node
+	segment        string
+	methods        methodHandlers
+	staticChildren []*node
+	paramChild     *node
+	wildcardChild  *node
+	isHandler      bool
 }
 
 type RadixRouter struct {
@@ -83,7 +142,7 @@ func NewRadixRouter() *RadixRouter {
 	return &RadixRouter{}
 }
 
-func (rr *RadixRouter) cleanPathString(p string) string {
+func cleanPathString(p string) string {
 	if DefaultRouterConfig.TrimSuffixSlashes {
 		return strings.TrimSuffix(p, "/")
 	}
@@ -91,128 +150,117 @@ func (rr *RadixRouter) cleanPathString(p string) string {
 }
 
 // Adds a path to the router
-func (rr *RadixRouter) Add(r *Route) {
-	r.Path = rr.cleanPathString(r.Path)
-	parts := strings.Split(r.Path, "/")
-	Node := &rr.root
+func (rr *RadixRouter) Add(r RouteInfo) {
+	path := cleanPathString(r.Path)
+	currNode := &rr.root
+	remainder := path
 
+	wildcardPresent := false // to make sure only one wildcard can exist per url and urls like "users/*/:id/* can be rejected instantly
 Outer:
-	for _, p := range parts {
-		// we traverse till we match any of the valid nodes and find the best and deepest parent possible
-		for _, cn := range Node.children {
-			if p == cn.path {
-				Node = cn
+	for {
+		// byte traversing logic
+		idx := strings.IndexByte(remainder, '/')
+		if idx == -1 {
+			break
+		}
+		segment := remainder[:idx]
+		if segment == "" {
+			panic("mo/router.go/SegmentTreeRouter.Add: empty segment found in URL path, not allowed. Provide valid URLs")
+		}
+		remainder = remainder[idx+1:]
+
+		// we traverse till we match any static child node
+		for _, scn := range currNode.staticChildren {
+			if segment == scn.segment {
+				currNode = scn
 				continue Outer
 			}
 		}
 		// the program arrives here only if the above loop does not match any children for the current given path segment.
 		// if it doesn't it means the path already exists and the loop exits after finishing.
 		// so we create a child and append it to the current Node's children
-		nn := &node{
-			path: p,
+		newNode := &node{
+			segment: segment,
 		}
-		Node.children = append(
-			Node.children, nn,
-		)
-		Node = nn // as there was no child available we assign the current node to the new child we made
+		switch segment[0] {
+		case ':':
+			if currNode.paramChild != nil {
+				panic(`mo/router.go/SegmentTreeRouter.Add: cannot have more than one parameter type route under one node`)
+			}
+			if currNode.wildcardChild != nil {
+				panic("mo/router.go/SegmentTreeRouter.Add: cannot have a param after a wildcard in a URL")
+			}
+			currNode.paramChild = newNode
+		case '*':
+			if currNode.wildcardChild != nil {
+				panic("mo/router.go/SegmentTreeRouter.Add: cannot have more than one wildcard type route under one node")
+			}
+			if wildcardPresent {
+				panic(`mo/router.go/SegmentTreeRouter.Add: cannot have more than one wildcard labels in one URL path ("*")`)
+			}
+			currNode.wildcardChild = newNode
+			wildcardPresent = true
+		default:
+			currNode.staticChildren = append(currNode.staticChildren, newNode)
+		}
+		currNode = newNode // as there was no child available we assign the current node to the new child we made
 	}
-	// We add the handlers to the deepest node.
-	Node.handlers.add(r.Method, r.Handler)
-	// we also add the middlewares with it.
-	Node.middleware = append(Node.middleware, r.Middlewares...)
+	// We add the handlers to the current node.
 	// Note: if a user adds another handler for the same path and method then the previous one gets overwritten.
+	currNode.methods.add(r.Method, r.Handler)
+	if !currNode.isHandler {
+		currNode.isHandler = true
+	}
 }
 
-// Finds a path from the path and method given, returns a [HTTPError] if not found or wrong method
+// Finds a path from the path and method given, returns a [HttpError] instance if not found or wrong method
 //
 // The returned Route instance is a read only value, do not write to it and expect changes.
-func (rr *RadixRouter) Find(c *Context, path, method string) (*Route, HTTPError) {
-	path = rr.cleanPathString(path)
-	parts := strings.Split(path, "/")
-	Node := &rr.root
-	var wildcard *node
-	var param *node
-
+func (rr *RadixRouter) Find(c *Context, path, method string) (RouteInfo, HttpError) {
+	path = cleanPathString(path)
+	remainder := path
+	currNode := &rr.root
 Outer:
-	for _, p := range parts { // we loop over the parts, ex: [users,:id,posts]
-		param = nil
-		for _, cn := range Node.children { // we check each node's children to find a match, if children slice is nil it automatically doesn't start the loop
-			if p == cn.path {
-				Node = cn      // if we find a match then we assign the value of Node to the current child we found
-				continue Outer // and we continue the loop, if the parts has ran out then this is the correct node we are in and have found our match
-			} else if cn.path[0] == ':' { // this is a param path, ex: ":id"
-				c.params[cn.path[1:]] = p // we store the parameter value in the map, (trimming the starting colon ofc.)
-				param = cn                // we do not continue the loop here or in wildcard because we are not finishing searching through it, we only continue in the static child because that is the best possible scenario
-			} else if cn.path == "*" { // this is a wildcard path, ex: "*"
-				wildcard = cn // we just store the node to the type of node we found, and then check it later if we found any to then act accordingly.
+	for {
+		// we loop over the parts, ex: [users,:id,posts]
+		// byte traversing logic
+		idx := strings.IndexByte(remainder, '/')
+		if idx == -1 {
+			break
+		}
+		segment := remainder[:idx]
+		remainder = remainder[idx+1:]
+
+		// traverse to find any static child first
+		for _, scn := range currNode.staticChildren {
+			if segment == scn.segment {
+				currNode = scn
+				continue Outer
 			}
 		}
-		// if the program arrives here it means it has ran out of static children to search.
-		if param != nil { // Now, if there is a param we assign node to that and continue
-			Node = param
-			continue Outer
-		} else if wildcard != nil { // and if there is no static and no param, then we assign the node to be the last wildcard we found.
-			Node = wildcard
+		// if not found any static child we look for param child
+		if currNode.paramChild != nil {
+			currNode = currNode.paramChild
+			c.params[currNode.segment[1:]] = segment
 			continue Outer
 		}
-		// if theres no static, no param and no wildcards. Then its a dead end.
-		return nil, ErrNotFound
+		// if not param we look for wildcard child
+		if currNode.wildcardChild != nil {
+			currNode = currNode.wildcardChild
+			c.params["*"] = segment + remainder // allocates on the heap but its okay as wildcard paths are rare, not important to optimize as of now
+			break Outer                         // if it is wildcard match we do not traverse any longer and exit early
+		}
+		// if there is no static, no param and no wildcards. Then its a dead end.
+		return RouteInfo{}, ErrNotFound
 	}
 	// means there is a node without a handler. it just means not found for the user
 	// the node exists but lacks functionality
-	if Node.handlers.totalHandlers == 0 {
-		return nil, ErrNotFound // no handlers were ever registered for this node.
+	if !currNode.isHandler{
+		return RouteInfo{}, ErrNotFound // no handlers were ever registered for this node.
 	}
-	hn := Node.handlers.fromString(method)
-	if hn == nil {
-		return nil, ErrMethodNotAllowed // if there is no handler returned then we can assume its a wrong method
+	handler := currNode.methods.fromString(method)
+	if handler == nil {
+		return RouteInfo{}, ErrMethodNotAllowed // if there is no handler returned then we can assume its a wrong method
 	}
-	return &Route{path, method, hn, Node.middleware}, nil
-}
-
-func (mh *methodHandlers) add(method string, handler HandlerFunc) {
-	switch method {
-	case http.MethodGet:
-		mh.get = handler
-	case http.MethodPost:
-		mh.post = handler
-	case http.MethodPut:
-		mh.put = handler
-	case http.MethodPatch:
-		mh.patch = handler
-	case http.MethodDelete:
-		mh.delete = handler
-	case http.MethodOptions:
-		mh.options = handler
-	case http.MethodHead:
-		mh.head = handler
-	default:
-		return
-	}
-	mh.totalHandlers++
-	// well there is a possible overflow where if the user adds 256 handlers for the same path.... (the variable is of 8 bits)
-	// I mean there isn't 256 methods so he/she will just have to keep overwriting the handlers.
-	// and well if it overflows to 0 then it will return a 405 method not allowed. just saying.
-}
-
-// Returns the method from the string name.
-func (mh *methodHandlers) fromString(method string) HandlerFunc {
-	switch method {
-	case http.MethodGet:
-		return mh.get
-	case http.MethodPost:
-		return mh.post
-	case http.MethodPut:
-		return mh.put
-	case http.MethodPatch:
-		return mh.patch
-	case http.MethodDelete:
-		return mh.delete
-	case http.MethodOptions:
-		return mh.options
-	case http.MethodHead:
-		return mh.head
-	default:
-		return nil // doesn't matter if it gets triggered it just gives a 405 Incorrect method.
-	}
+	return RouteInfo{path, method, handler}, HttpError{}
 }
