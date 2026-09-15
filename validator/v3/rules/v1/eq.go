@@ -131,7 +131,7 @@ var (
 	FnGt = func(value float64, param float64) bool {
 		return value >= param
 	}
-	FnLen = func(value int, param int) bool {
+	FnLen = func(value uint, param uint) bool {
 		return value == param
 	}
 	FnStartswith = func(value string, param string) bool {
