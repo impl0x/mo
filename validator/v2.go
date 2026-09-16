@@ -191,7 +191,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 	ruleValueStr := split[1]
 	var err ValidationError
 	switch rule {
-	case min_, max_, gte, lte, lt, gt:
+	case ruleMin, ruleMax, ruleGte, ruleLte, ruleLt, ruleGt:
 		// type checking for the field value here
 		if slices.Contains(numTypes, vd.f.kind) { // checking numTypes, int, uint, float,etc.
 			err = vd.handleNumericComparison(rule, vd.f.v.Convert(reflect.TypeFor[float64]()).Float(), ruleValueStr, "Field value")
@@ -200,7 +200,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		} else { // unsupported
 			err = newUserError("the field must be either string, collection or numeric.", vd.parent, vd.f.fieldName)
 		}
-	case len_:
+	case ruleLen:
 		ruleValue, e := strconv.Atoi(ruleValueStr)
 		if e != nil {
 			return newUserError("len tag value must be int.", vd.parent, vd.f.fieldName)
@@ -212,7 +212,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		} else {
 			err = newUserError("the field must be either string or collection", vd.parent, vd.f.fieldName)
 		}
-	case oneof:
+	case ruleOneof:
 		if vd.f.kind == reflect.String {
 			ruleValues := strings.Split(ruleValueStr, " ")
 			if !slices.Contains(ruleValues, vd.f.v.String()) {
@@ -221,7 +221,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		} else {
 			err = newUserError("oneof tag must only be used on a string field", vd.parent, vd.f.fieldName)
 		}
-	case startswith:
+	case ruleStartswith:
 		if vd.f.kind == reflect.String {
 			if !strings.HasPrefix(vd.f.v.String(), ruleValueStr) {
 				err = newFieldValidateError("Value must start with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
@@ -229,7 +229,7 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		} else {
 			err = newUserError("startswith tag must be only used on a string field", vd.parent, vd.f.fieldName)
 		}
-	case endswith:
+	case ruleEndswith:
 		if vd.f.kind == reflect.String {
 			if !strings.HasSuffix(vd.f.v.String(), ruleValueStr) {
 				err = newFieldValidateError("Value must end with "+ruleValueStr, ruleValueStr, vd.parent, vd.f)
@@ -250,19 +250,19 @@ func (vd *validator) handleNumericComparison(rule string, value float64, ruleVal
 	}
 	var errMsg string
 	switch rule {
-	case min_, gte:
+	case ruleMin, ruleGte:
 		if value < ruleValue {
 			errMsg = fmt.Sprintf("%v must be more than or equal to %v", errorValueName, ruleValue)
 		}
-	case max_, lte:
+	case ruleMax, ruleLte:
 		if value > ruleValue {
 			errMsg = fmt.Sprintf("%v must be less than or equal to %v", errorValueName, ruleValue)
 		}
-	case gt:
+	case ruleGt:
 		if value <= ruleValue {
 			errMsg = fmt.Sprintf("%v must be greater than %v", errorValueName, ruleValue)
 		}
-	case lt:
+	case ruleLt:
 		if value >= ruleValue {
 			errMsg = fmt.Sprintf("%v must be less than %v", errorValueName, ruleValue)
 		}
