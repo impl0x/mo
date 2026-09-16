@@ -2,7 +2,9 @@ package validator
 
 import "github.com/impl0x/go-utils/cache"
 
-var customValidations = cache.NewSyncMapCache[string, func(v any, param string) error]() // using sync map because it uses less
+type CustomValidatorFunc func(v any, param string) error
+
+var customValidations = cache.NewSyncMapCache[string, CustomValidatorFunc]() // using sync map because its better for heavy reads
 
 // Adds a validation rule to the validator global instance
 // param is passed if they exist else empty string is passed
@@ -16,9 +18,9 @@ var customValidations = cache.NewSyncMapCache[string, func(v any, param string) 
 // because it causes a heap allocation every time errors.New is called, hence used sentinel error variables declared once, either using global variables or closures.
 //
 // recommended to use only at startup and not at runtime, and not to use duplicate keys globally
-func AddCustomValidation(ruleName string, fn func(v any, param string) error) {
-	if fn==nil{
-		panic("mo/validator: AddCustomValidation() function passed is nil")
+func AddCustomValidation(ruleName string, fn CustomValidatorFunc) {
+	if fn == nil {
+		panic("validator: function passed is nil")
 	}
 	customValidations.Add(ruleName, fn)
 }
