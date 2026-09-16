@@ -16,16 +16,17 @@ var structCache = cache.NewSyncMapCache[reflect.Type, structData]()
 
 // represents a struct type metadata
 type structData struct {
-	typ    reflect.Type
 	fields []structFieldData
 }
 
 type structFieldData struct {
-	index     int
-	name      string
-	typ       reflect.Type
-	tag       reflect.StructTag
-	ruleFuncs []ValidateFunc
+	index      int
+	name       string
+	ruleFuncs  []ValidateFunc
+	fieldKind  reflect.Kind
+	isRequired bool
+	isOptional bool
+	isDive     bool
 }
 
 // info:
@@ -46,7 +47,6 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 		panic("validator cache initialization: structType is not of type struct")
 	}
 	sd := structData{
-		typ:    structType,
 		fields: make([]structFieldData, 0), // allow it to grow
 	}
 	for i := range structType.NumField() {
@@ -55,8 +55,9 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 		if !currField.IsExported() {
 			continue
 		}
+		kind := currField.Type.Kind()
 		// if nested struct we recursively cache it again if it doesn't exist in cache already
-		if currField.Type.Kind() == reflect.Struct {
+		if kind == reflect.Struct {
 			_, ok := structCache.Get(currField.Type)
 			if !ok {
 				sd, err := newStructDataWithCache(currField.Type)
@@ -79,13 +80,29 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 		fieldData := structFieldData{
 			index:     i,
 			name:      currField.Name,
-			typ:       currField.Type,
-			tag:       currField.Tag,
 			ruleFuncs: make([]ValidateFunc, 0), // let it grow, as this function runs only once per struct its okay to have expensive operations.
+			fieldKind: kind,
 		}
 
 		// loop over rules
 		for _, rule := range fieldRules {
+			// first we need to check for required, optional and dive, because they are special cases,
+			// and just set the bool flag for them to true, the validator will handle the rest while validating.
+			switch rule {
+			case rules.RuleRequired:
+				fieldData.isRequired = true
+			case rules.RuleOptional:
+				fieldData.isOptional = true
+			case rules.RuleDive:
+				if !slices.Contains(rules.Dive.FieldTypes, kind) {
+					return structData{}, newUserError("Invalid field type for rule "+rules.RuleDive, fieldData.name)
+				}
+				fieldData.isDive = true
+			}
+			if fieldData.isRequired || fieldData.isOptional || fieldData.isDive {
+				continue
+			}
+
 			// the plan here is to check what kind of rule it is first
 			// and according to that prepare a validate function which
 			// will be appended to ruleFuncs at last.
@@ -95,13 +112,13 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 			// operation for validator will be to dereference it
 			var ruleFunc ValidateFunc
 
-			nonEqRule := rules.NonEqHit(rule)
+			nonEqRule := rules.NonEqHit(rule) // does not hit for required optional or dive as we already checked them earlier
 			// non eq rule hit
 			if !nonEqRule.IsNil() {
 				// we dont validate field types dynamically as of now as every rule is as string field, so it is hardcoded as of now.
-				if fieldData.typ.Kind() != reflect.String {
+				if kind != reflect.String {
 					return structData{}, newUserError(
-						"cannot validate a "+rule+" rule against a "+fieldData.typ.Kind().String(),
+						"cannot validate a "+rule+" rule against a "+kind.String(),
 						fieldData.name,
 					)
 				}
@@ -147,7 +164,7 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 			// eq rule hit
 			if !eqRule.IsNil() {
 				// validate field type
-				if !slices.Contains(eqRule.FieldTypes, fieldData.typ.Kind()) {
+				if !slices.Contains(eqRule.FieldTypes, kind) {
 					return structData{}, newUserError("Invalid field type for eq rule "+ruleName, fieldData.name)
 				}
 				switch eqRule.Name {
