@@ -196,6 +196,8 @@ func NonEqHit(ruleName string) NonEqRule {
 		return Required
 	case RuleOptional:
 		return Optional
+	case RuleDive:
+		return Dive
 	case RuleEmail:
 		return Email
 	case RuleE164:
