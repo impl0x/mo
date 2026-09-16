@@ -81,11 +81,19 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 			name:      currField.Name,
 			typ:       currField.Type,
 			tag:       currField.Tag,
-			ruleFuncs: make([]ValidateFunc, 0, len(fieldRules)), // we can afford a few extra 8 byte wastage because there wont be exactly len(fieldRules) number of functions
+			ruleFuncs: make([]ValidateFunc, 0), // let it grow, as this function runs only once per struct its okay to have expensive operations.
 		}
 
+		// loop over rules
 		for _, rule := range fieldRules {
-			// we check for rule types and validate the field types then prepare and append function to rule funcs
+			// the plan here is to check what kind of rule it is first
+			// and according to that prepare a validate function which
+			// will be appended to ruleFuncs at last.
+
+			// variable to store the prepared function, this function will use closures,
+			// as closures are just a pointer to memory on the heap the only expensive
+			// operation for validator will be to dereference it
+			var ruleFunc ValidateFunc
 
 			nonEqRule := rules.NonEqHit(rule)
 			// non eq rule hit
@@ -97,16 +105,14 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 						fieldData.name,
 					)
 				}
-				// appending a preparing function to the ruleFuncs slice, using closure variables.
-				fieldData.ruleFuncs = append(
-					fieldData.ruleFuncs,
-					func(v reflect.Value) *FieldValidateError {
-						if !nonEqRule.Validate(v.String()) {
-							return newFieldValidateError(nonEqRule.ErrMsg, rule, "", fieldData, v)
-						}
-						return nil
-					},
-				)
+				// preparing the func
+				ruleFunc = func(v reflect.Value) *FieldValidateError {
+					if !nonEqRule.Validate(v.String()) {
+						return newFieldValidateError(nonEqRule.ErrMsg, rule, "", fieldData, v)
+					}
+					return nil
+				}
+
 				continue
 			}
 			// either eq rule, or custom rule
@@ -121,16 +127,13 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 			customFn, ok := customValidations.Get(ruleName)
 			// custom validation hit
 			if ok {
-				fieldData.ruleFuncs = append(
-					fieldData.ruleFuncs,
-					func(v reflect.Value) *FieldValidateError {
-						err := customFn(v.Interface(), param)
-						if err != nil {
-							return newFieldValidateError(err.Error(), ruleName, param, fieldData, v)
-						}
-						return nil
-					},
-				)
+				ruleFunc = func(v reflect.Value) *FieldValidateError {
+					err := customFn(v.Interface(), param)
+					if err != nil {
+						return newFieldValidateError(err.Error(), ruleName, param, fieldData, v)
+					}
+					return nil
+				}
 				continue
 			}
 
@@ -192,16 +195,14 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 						fn = rules.FnLt
 					}
 
-					// finally appending
-					fieldData.ruleFuncs = append(
-						fieldData.ruleFuncs,
-						func(v reflect.Value) *FieldValidateError {
-							if !fn(convFn(v), floatParam) {
-								return newFieldValidateError(errMsgPrefix+eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
-							}
-							return nil
-						},
-					)
+					// finally preparing our function
+					ruleFunc = func(v reflect.Value) *FieldValidateError {
+						if !fn(convFn(v), floatParam) {
+							return newFieldValidateError(errMsgPrefix+eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
+						}
+						return nil
+					}
+
 				case rules.RuleLen:
 					// param validation
 					if slices.Compare(eqRule.ParamTypes, rules.TypeUInt) != 0 { // as they have only type uint, we panic as we cannot validate then
@@ -216,15 +217,13 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 					// creating conversion functions for value
 					convFn := func(v reflect.Value) uint { return uint(v.Len()) }
 
-					fieldData.ruleFuncs = append(
-						fieldData.ruleFuncs,
-						func(v reflect.Value) *FieldValidateError {
-							if !rules.FnLen(convFn(v), uintParam) {
-								return newFieldValidateError(eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
-							}
-							return nil
-						},
-					)
+					ruleFunc = func(v reflect.Value) *FieldValidateError {
+						if !rules.FnLen(convFn(v), uintParam) {
+							return newFieldValidateError(eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
+						}
+						return nil
+					}
+
 				case rules.RuleStartswith, rules.RuleEndswith, rules.RuleOneof:
 					// param validation
 					if slices.Compare(eqRule.ParamTypes, rules.TypeString) != 0 {
@@ -246,24 +245,21 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 						fn = rules.FnOneof
 					}
 
-					fieldData.ruleFuncs = append(
-						fieldData.ruleFuncs,
-						func(v reflect.Value) *FieldValidateError {
-							if !fn(convFn(v), strParam) {
-								return newFieldValidateError(eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
-							}
-							return nil
-						},
-					)
-
+					ruleFunc = func(v reflect.Value) *FieldValidateError {
+						if !fn(convFn(v), strParam) {
+							return newFieldValidateError(eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
+						}
+						return nil
+					}
 				}
-
 			} else {
 				// if not even eq rule then it is a invalid rule
 				return structData{}, newUserError("invalid rule", fieldData.name)
 			}
-			// at this point fieldData is populated properly with the rule
+			// at this point ruleFunc is set with the appropriate validating function, so we append it to ruleFuncs
+			fieldData.ruleFuncs = append(fieldData.ruleFuncs, ruleFunc)
 		}
+		// append the fieldData to the structData
 		sd.fields = append(sd.fields, fieldData)
 	}
 	return sd, nil
