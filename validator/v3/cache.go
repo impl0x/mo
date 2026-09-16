@@ -27,6 +27,8 @@ type structFieldData struct {
 	isRequired bool
 	isOptional bool
 	isDive     bool
+	typ        reflect.Type
+	tag        reflect.StructTag
 }
 
 // info:
@@ -82,6 +84,8 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 			name:      currField.Name,
 			ruleFuncs: make([]ValidateFunc, 0), // let it grow, as this function runs only once per struct its okay to have expensive operations.
 			fieldKind: kind,
+			typ:       currField.Type,
+			tag:       currField.Tag,
 		}
 
 		// loop over rules
@@ -91,15 +95,15 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 			switch rule {
 			case rules.RuleRequired:
 				fieldData.isRequired = true
+				continue
 			case rules.RuleOptional:
 				fieldData.isOptional = true
+				continue
 			case rules.RuleDive:
 				if !slices.Contains(rules.Dive.FieldTypes, kind) {
 					return structData{}, newUserError("Invalid field type for rule "+rules.RuleDive, fieldData.name)
 				}
 				fieldData.isDive = true
-			}
-			if fieldData.isRequired || fieldData.isOptional || fieldData.isDive {
 				continue
 			}
 
@@ -153,10 +157,9 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 				}
 				continue
 			}
-
 			// try eq rules
 			// if param is empty and eq rules cannot have param empty we return error
-			if param != "" {
+			if param == "" {
 				return structData{}, newUserError("invalid rule", fieldData.name)
 			}
 
