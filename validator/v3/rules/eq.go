@@ -159,25 +159,25 @@ var (
 
 func EqHit(ruleName string) EqRule {
 	switch ruleName {
-	case "min":
+	case RuleMin:
 		return Min
-	case "max":
+	case RuleMax:
 		return Max
-	case "gte":
+	case RuleGte:
 		return Gte
-	case "lte":
+	case RuleLte:
 		return Lte
-	case "lt":
+	case RuleLt:
 		return Lt
-	case "gt":
+	case RuleGt:
 		return Gt
-	case "len":
+	case RuleLen:
 		return Len
-	case "startswith":
+	case RuleStartswith:
 		return StartsWith
-	case "endswith":
+	case RuleEndswith:
 		return EndsWith
-	case "oneof":
+	case RuleOneof:
 		return Oneof
 	default:
 		return EqRule{}
