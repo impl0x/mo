@@ -46,72 +46,84 @@ const (
 )
 
 var (
+	// field must be present, and not be zero value
 	Required = NonEqRule{
 		RuleRequired,
 		TypeAny,
 		"Required field not found",
 		nil,
 	}
+	// field may not be present, will not be validated if not present
 	Optional = NonEqRule{
 		RuleOptional,
 		TypeAny,
 		"",
 		nil,
 	}
+	// dives into a map/slice/array to validate all fields with all the validations on the field
 	Dive = NonEqRule{
 		RuleDive,
 		TypeCollection,
 		"",
 		nil,
 	}
+	// must be a valid email address, validated using regex
 	Email = NonEqRule{
 		RuleEmail,
 		TypeString,
 		"Invalid email",
 		FnEmail,
 	}
+	// must be a valid e.164 string, validated using regex
 	E164 = NonEqRule{
 		RuleE164,
 		TypeString,
 		"Invalid e.164 string",
 		FnE164,
 	}
+	// must be a valid url address, validated using regex
 	Url = NonEqRule{
 		RuleUrl,
 		TypeString,
 		"Invalid URL address",
 		FnUrl,
 	}
+	// must be a valid UUID string, , validated using regex
 	Uuid = NonEqRule{
 		RuleUuid,
 		TypeString,
 		"Invalid UUID string",
 		FnUuid,
 	}
+	// string must be only alphabets, validated using byte checking
 	Alpha = NonEqRule{
 		RuleAlpha,
 		TypeString,
 		"String must only contain alphabets",
 		FnAlpha,
 	}
-	AlphaNum = NonEqRule{
+	// string must be only alphabets or numbers, validated using byte checking
+	Alphanum = NonEqRule{
 		RuleAlphanum,
 		TypeString,
 		"String must only contain alphabets or numbers",
 		FnAlphanum,
 	}
+	// string must be only numbers, validated using byte checking
 	Numeric = NonEqRule{
 		RuleNumeric,
 		TypeString,
 		"String must only contain numbers",
 		FnNumeric,
 	}
+	// must be valid IPv4 address, validated using regex
 	Ipv4 = NonEqRule{
 		RuleIpv4,
 		TypeString,
 		"Invalid IPv4 address",
 		FnIpv4,
 	}
+	// must be valid IPv6 address, validated using regex
 	Ipv6 = NonEqRule{
 		RuleIpv6,
 		TypeString,
@@ -180,27 +192,27 @@ func loopStr(s string, fn func(c rune) bool) bool {
 
 func NonEqHit(ruleName string) NonEqRule {
 	switch ruleName {
-	case "required":
+	case RuleRequired:
 		return Required
-	case "optional":
+	case RuleOptional:
 		return Optional
-	case "email":
+	case RuleEmail:
 		return Email
-	case "e.164":
+	case RuleE164:
 		return E164
-	case "url":
+	case RuleUrl:
 		return Url
-	case "uuid":
+	case RuleUuid:
 		return Uuid
-	case "alpha":
+	case RuleAlpha:
 		return Alpha
-	case "alphanum":
-		return AlphaNum
-	case "numeric":
+	case RuleAlphanum:
+		return Alphanum
+	case RuleNumeric:
 		return Numeric
-	case "ipv4":
+	case RuleIpv4:
 		return Ipv4
-	case "ipv6":
+	case RuleIpv6:
 		return Ipv6
 	default:
 		return NonEqRule{}
