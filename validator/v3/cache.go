@@ -128,12 +128,13 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 				}
 				// preparing the func
 				ruleFunc = func(v reflect.Value) *FieldValidateError {
+					println("inside fn ", nonEqRule.Validate(v.String()))
 					if !nonEqRule.Validate(v.String()) {
 						return newFieldValidateError(nonEqRule.ErrMsg, rule, "", fieldData, v)
 					}
 					return nil
 				}
-
+				fieldData.ruleFuncs = append(fieldData.ruleFuncs, ruleFunc)
 				continue
 			}
 			// either eq rule, or custom rule
@@ -155,6 +156,7 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 					}
 					return nil
 				}
+				fieldData.ruleFuncs = append(fieldData.ruleFuncs, ruleFunc)
 				continue
 			}
 			// try eq rules
@@ -272,12 +274,12 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 						return nil
 					}
 				}
-			} else {
-				// if not even eq rule then it is a invalid rule
-				return structData{}, newUserError("invalid rule", fieldData.name)
+				fieldData.ruleFuncs = append(fieldData.ruleFuncs, ruleFunc)
+				continue
 			}
-			// at this point ruleFunc is set with the appropriate validating function, so we append it to ruleFuncs
-			fieldData.ruleFuncs = append(fieldData.ruleFuncs, ruleFunc)
+			// if not even eq rule then it is a invalid rule
+			return structData{}, newUserError("invalid rule", fieldData.name)
+
 		}
 		// append the fieldData to the structData
 		sd.fields = append(sd.fields, fieldData)

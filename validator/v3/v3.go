@@ -59,10 +59,13 @@ func Validate(value any) error {
 	for _, field := range sd.fields {
 		v := rv.Field(field.index)
 		if field.isRequired && v.IsZero() {
+			// if required and not present we give error
 			return newFieldValidateError(rules.Required.ErrMsg, rules.RuleRequired, "", field, v)
 		} else if field.isOptional && v.IsZero() {
-			return nil
+			// if optional and value not present we skip the field for validation
+			continue
 		} else if field.isDive {
+			// if dive then we perform validation on all elements
 			switch field.fieldKind {
 			case reflect.Array, reflect.Slice:
 				for i := range v.Len() {
@@ -74,18 +77,25 @@ func Validate(value any) error {
 					fnWrapper(iter.Value(), field.ruleFuncs)
 				}
 			}
+			continue
 		}
+		// apply all rule validations on this field
 		fnWrapper(v, field.ruleFuncs)
 	}
 	if errs == nil {
-		// we cannot directly return errs here because of the way interfaces
-		// are implemented in go, here we return an error type so the compiler
-		// has to make our GroupedValidationError type into a error interface,
-		// and the way go treats interface nil-ability is by seeing if a the
-		// interface contains a type or not. In this case even though the value
-		// is nil, it still has type data. Therefore checking the result for nil
-		// will always result in false even if the value is nil in reality.
+		// we cannot directly return "errs" from here even if it is nil, because of
+		// the way interfaces are implemented in go, in this function we return an 
+		// variable of type error as the second value and thus compiler has to box 
+		// our [GroupedValidationError] type to an error interface. An interface is 
+		// implemented by having two pointers, one to the type and one to the value,
+		// and the way nil-ability is treated, that is if a interface is nil is by 
+		// checking if the type pointer is nil. So even if the variable having its 
+		// value as nil it still has a type, in our case of type [GroupedValidationError].
+		// Therefore checking the returned error variable from this function for nil 
+		// will always result true no matter the value of the variable, just because 
+		// the variable has a type.
 		return nil
 	}
+	// return errors if present.
 	return errs
 }
