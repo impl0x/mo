@@ -86,8 +86,8 @@ func (tb *tokenBucket) findBucket(ip string) (bool, bool) {
 }
 func (tb *tokenBucket) refill(u *user) {
 	now := time.Now()
-	elapsed := uint16(now.Sub(u.lastRefillAt).Seconds())                   // trust me nobody's visiting the api after ~45 days
-	u.tokens = min(tb.Config.maxCapacity, u.tokens+elapsed*tb.Config.rate) // even if they do, it caps out at the 16 bit limit.
+	elapsed := uint16(now.Sub(u.lastRefillAt).Seconds())
+	u.tokens = min(tb.Config.maxCapacity, u.tokens+elapsed*tb.Config.rate)
 	u.lastRefillAt = now
 	u.lastSeenAt = now
 }
