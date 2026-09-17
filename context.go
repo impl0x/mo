@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/impl0x/go-utils/cache"
 	"github.com/impl0x/mo/modules/logger"
 	"github.com/impl0x/mo/validator/v3"
 )
@@ -157,48 +158,64 @@ func (c *Context) Store() map[string]any {
 	return c.store.Store
 }
 
-// Binds the *request* headers to a struct
+type bindHeaderStructCacheData struct {
+	fieldData []struct {
+		index   int
+		keyName string
+	}
+}
+
+var bindHeaderCache = cache.NewSyncMapCache[reflect.Type, bindHeaderStructCacheData]()
+
+// Binds the headers of a request to a struct provided
 //
-// must contain tag `header`
-//
-// example:
-//
-//	token string `header:"authorization"`
-//
-// fields of the struct MUST be strings!
-func (c *Context) BindHeaders(target any) { // TODO: make reflection cached.
+// Key names for the request is used by the field name or if a `header` tag is present that name is used.
+// All fields must be strings or that field will be ignored. An "omitempty" can be used for the header tag,
+// this ignores any other type of field without logging an error.
+func (c *Context) BindHeaders(target any) {
 	rv := reflect.ValueOf(target)
 	if rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
 	}
-	rt := rv.Type()
 	if rv.Kind() != reflect.Struct {
 		if c.Mo.Config.LogErrors {
 			logger.Mo("Cannot bind headers to a non struct object")
 		}
 		return
 	}
-	for i := range rv.NumField() {
-		v := rv.Field(i)
-		t := rt.Field(i)
-		if !t.IsExported() {
-			continue
-		}
-		if v.Kind() != reflect.String {
-			if c.Mo.Config.LogErrors {
-				logger.Mo("Header binding variables must be strictly string")
+	rt := rv.Type()
+	sd, ok := bindHeaderCache.Get(rt)
+	if !ok {
+		// cache the field names and indexes
+		for i := range rt.NumField() {
+			t := rt.Field(i)
+			if !t.IsExported() {
+				continue
 			}
-			continue // headers values must be strings strictly
+			keyName, ok := t.Tag.Lookup("header")
+			if !ok {
+				keyName = t.Name
+			}
+			if t.Type.Kind() != reflect.String {
+				if c.Mo.Config.LogErrors && keyName != "omitempty" {
+					logger.Mo("context: binding headers to a struct requires all fields to be strings! But field " + t.Name + " is of type " + t.Type.Name())
+				}
+				continue // headers values must be strings strictly
+			}
+			sd.fieldData = append(sd.fieldData, struct {
+				index   int
+				keyName string
+			}{i, keyName})
 		}
-		tag, ok := t.Tag.Lookup("header")
-		if !ok {
-			continue
+		// add to cache
+		bindHeaderCache.Add(rt, sd)
+	}
+	for _, fd := range sd.fieldData {
+		v := rv.Field(fd.index)
+		value := c.request.Header.Get(fd.keyName)
+		if value != "" {
+			v.SetString(value)
 		}
-		value := c.request.Header.Get(tag)
-		if value == "" {
-			continue
-		}
-		v.SetString(value)
 	}
 }
 
