@@ -7,6 +7,7 @@ import (
 
 var ErrResponseAlreadyCommitted = errors.New("headers already written")
 
+// Response manager for this request
 type Response struct {
 	http.ResponseWriter
 	committed              bool

@@ -13,6 +13,7 @@ import (
 	"github.com/impl0x/mo/validator/v3"
 )
 
+// context pooling to reduce allocation on every request
 var contextPool = sync.Pool{
 	New: func() any {
 		return &Context{
@@ -24,17 +25,22 @@ var contextPool = sync.Pool{
 	},
 }
 
-// stores context values, usually used inside an context instance. It is not goroutine safe, do not pass same mo context to multiple goroutines. otherwise your pc might blow up
+// stores context values, usually used inside an context instance.
+// It is not goroutine safe, do not use [ContextStore] multiple goroutines.
+// Else manage your own mutex
 type ContextStore struct {
 	Store  map[string]any
 	Params map[string]string
 }
 
+// clears the context store maps
 func (cs *ContextStore) clear() {
 	clear(cs.Params)
 	clear(cs.Params)
 }
 
+// Context for a request, contains methods for sending several common response types.
+// ResponseHeaders is used to manage headers for the response.
 type Context struct {
 	Mo              *Mo // original Mo instance
 	request         *http.Request
@@ -47,10 +53,12 @@ func (c *Context) writeContentType(value string) {
 	c.response.Header().Set(HeaderContentType, value)
 }
 
+// returns the request instance for this request
 func (c *Context) Request() *http.Request {
 	return c.request
 }
 
+// returns the response instance for this request
 func (c *Context) Response() *Response {
 	return &c.response
 }
@@ -158,6 +166,7 @@ func (c *Context) Store() map[string]any {
 	return c.store.Store
 }
 
+// data struct
 type bindHeaderStructCacheData struct {
 	fieldData []struct {
 		index   int
@@ -165,6 +174,7 @@ type bindHeaderStructCacheData struct {
 	}
 }
 
+// cache used to store header binding structs
 var bindHeaderCache = cache.NewSyncMapCache[reflect.Type, bindHeaderStructCacheData]()
 
 // Binds the headers of a request to a struct provided
@@ -185,6 +195,7 @@ func (c *Context) BindHeaders(target any) {
 	}
 	rt := rv.Type()
 	sd, ok := bindHeaderCache.Get(rt)
+	// if cache miss
 	if !ok {
 		// cache the field names and indexes
 		for i := range rt.NumField() {
