@@ -131,15 +131,18 @@ type node struct {
 	isHandler      bool
 }
 
-type RadixRouter struct {
-	root node
+type SegmentTreeRouter struct {
+	root *node
 }
 
-// o(k) lookup times, uses a compact trie like structure
+// o(nk) lookup times, where k is the amount of path segments and
+// n being the number of children for each node segment
+//
+// uses a segment based tree to route paths
 //
 // k is the length of the list when the url is split in the slashes
-func NewRadixRouter() *RadixRouter {
-	return &RadixRouter{}
+func NewSegmentTreeRouter() SegmentTreeRouter {
+	return SegmentTreeRouter{&node{}}
 }
 
 func cleanPathString(p string) string {
@@ -150,9 +153,9 @@ func cleanPathString(p string) string {
 }
 
 // Adds a path to the router
-func (rr *RadixRouter) Add(r RouteInfo) {
+func (str SegmentTreeRouter) Add(r RouteInfo) {
 	path := cleanPathString(r.Path)
-	currNode := &rr.root
+	currNode := str.root
 	remainder := path
 
 	wildcardPresent := false // to make sure only one wildcard can exist per url and urls like "users/*/:id/* can be rejected instantly
@@ -216,10 +219,10 @@ Outer:
 // Finds a path from the path and method given, returns a [HttpError] instance if not found or wrong method
 //
 // The returned Route instance is a read only value, do not write to it and expect changes.
-func (rr *RadixRouter) Find(c *Context, path, method string) (RouteInfo, HttpError) {
+func (str SegmentTreeRouter) Find(c *Context, path, method string) (RouteInfo, HttpError) {
 	path = cleanPathString(path)
 	remainder := path
-	currNode := &rr.root
+	currNode := str.root
 Outer:
 	for {
 		// we loop over the parts, ex: [users,:id,posts]

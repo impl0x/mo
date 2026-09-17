@@ -34,7 +34,7 @@ func DefaultConfig() MoConfig {
 // # Returns a new instance of Mo with the default configurations
 func New() *Mo {
 	return &Mo{
-		router:           NewRadixRouter(),
+		router:           NewSegmentTreeRouter(),
 		HTTPErrorHandler: DefaultHTTPErrorHandler(false),
 		Headers:          NewHeadersManager(),
 		Config:           DefaultConfig(),
