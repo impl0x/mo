@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/impl0x/mo/modules/logger"
-	// "github.com/impl0x/mo/validator"
+	"github.com/impl0x/mo/validator/v3"
 )
 
 var contextPool = sync.Pool{
@@ -207,15 +207,15 @@ func (c *Context) DecodeBody(target any) error {
 	return json.UnmarshalRead(c.request.Body, target)
 }
 
-// // Decodes the request body into a struct and validates that using [github.com/impl0x/mo/validator]
-// func (c *Context) DecodeAndValidateBody(target any) error {
-// 	err := json.UnmarshalRead(c.request.Body, target)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	errs := validator.Validate(target)
-// 	if errs != nil {
-// 		return errs
-// 	}
-// 	return nil
-// }
+// Decodes the request body into a struct and validates that using [github.com/impl0x/mo/validator]
+func (c *Context) DecodeAndValidateBody(target any) error {
+	err := json.UnmarshalRead(c.request.Body, target)
+	if err != nil {
+		return err
+	}
+	err = validator.Validate(target)
+	if err != nil {
+		return err
+	}
+	return nil
+}
