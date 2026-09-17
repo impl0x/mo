@@ -229,6 +229,7 @@ Outer:
 			break
 		}
 		segment := remainder[:idx]
+		remCache := remainder // used in wildcard paths to set the path in context storage
 		remainder = remainder[idx+1:]
 
 		// traverse to find any static child first
@@ -247,7 +248,7 @@ Outer:
 		// if not param we look for wildcard child
 		if currNode.wildcardChild != nil {
 			currNode = currNode.wildcardChild
-			c.store.Params["*"] = remainder
+			c.store.Params["*"] = remCache
 			break Outer // if it is wildcard match we do not traverse any longer and exit early
 		}
 		// if there is no static, no param and no wildcards. Then its a dead end.
