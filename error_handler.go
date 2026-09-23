@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/impl0x/mo/modules/logger"
-	// "github.com/impl0x/mo/validator"
+	"github.com/impl0x/mo/validator/v2"
 )
 
 // Error Handler must handle nil, HttpErrorInterface and error. (internal)
@@ -21,7 +21,7 @@ type internalErrorJson struct {
 }
 type validationErrorJson struct {
 	HttpError
-	// Errors []validator.ValidationErrorJson `json:"errors,omitempty"`
+	Errors []validator.ValidationErrorJson `json:"errors,omitempty"`
 }
 
 // if err==nil, returns
@@ -34,7 +34,7 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 		var jsonSyntaxErr *jsontext.SyntacticError
 		var jsonSemanticErr *json.SemanticError
 		var httpErr HttpError
-		// var vdErr validator.GroupedValidationError
+		var vdErr validator.GroupedValidationError
 		if c.response.committed {
 			if err == nil {
 				return
@@ -47,8 +47,8 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 		switch {
 		case errors.As(err, &httpErr):
 			c.JSON(httpErr.StatusCode(), httpErr)
-		// case errors.As(err, &vdErr):
-		// 	c.JSON(http.StatusBadRequest, validationErrorJson{HttpError: ErrBadRequest, Errors: vdErr.ToJsonStructList()})
+		case errors.As(err, &vdErr):
+			c.JSON(http.StatusBadRequest, validationErrorJson{HttpError: ErrBadRequest, Errors: vdErr.ToJsonStructList()})
 		case errors.As(err, &jsonSyntaxErr):
 			c.JSON(http.StatusUnprocessableEntity, HttpError{
 				Code:    http.StatusUnprocessableEntity,
