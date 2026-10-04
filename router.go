@@ -155,6 +155,7 @@ func cleanPathString(p string) string {
 // Adds a path to the router
 func (str SegmentTreeRouter) Add(r RouteInfo) {
 	path := cleanPathString(r.Path)
+	path = strings.TrimPrefix(path, "/")
 	currNode := str.root
 	remainder := path
 
@@ -167,9 +168,6 @@ Outer:
 			break
 		}
 		segment := remainder[:idx]
-		if segment == "" {
-			panic("mo/router.go/SegmentTreeRouter.Add: empty segment found in URL path, not allowed. Provide valid URLs")
-		}
 		remainder = remainder[idx+1:]
 
 		// we traverse till we match any static child node
@@ -188,18 +186,18 @@ Outer:
 		switch segment[0] {
 		case ':':
 			if currNode.paramChild != nil {
-				panic(`mo/router.go/SegmentTreeRouter.Add: cannot have more than one parameter type route under one node`)
+				panic(`mo - SegmentTreeRouter.Add: cannot have more than one parameter type route under one node`)
 			}
 			if currNode.wildcardChild != nil {
-				panic("mo/router.go/SegmentTreeRouter.Add: cannot have a param after a wildcard in a URL")
+				panic("mo - SegmentTreeRouter.Add: cannot have a param after a wildcard in a URL")
 			}
 			currNode.paramChild = newNode
 		case '*':
 			if currNode.wildcardChild != nil {
-				panic("mo/router.go/SegmentTreeRouter.Add: cannot have more than one wildcard type route under one node")
+				panic("mo - SegmentTreeRouter.Add: cannot have more than one wildcard type route under one node")
 			}
 			if wildcardPresent {
-				panic(`mo/router.go/SegmentTreeRouter.Add: cannot have more than one wildcard labels in one URL path ("*")`)
+				panic(`mo - SegmentTreeRouter.Add: cannot have more than one wildcard labels in one URL path ("*")`)
 			}
 			currNode.wildcardChild = newNode
 			wildcardPresent = true
