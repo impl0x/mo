@@ -33,15 +33,14 @@ func (r *Response) WriteHeader(statusCode int) {
 
 // here is where we take care of all the headers.
 func (r *Response) Write(b []byte) (int, error) {
-	if r.committed {
-		return 0, ErrResponseAlreadyCommitted
-	}
-	headers := r.Header()
-	DefaultHeadersConfig.writeHeaders(headers)
-	r.defaultHeaders.writeHeaders(headers)
-	r.RequestSpecificHeaders.writeHeaders(headers)
+	if !r.committed {
+		headers := r.Header()
+		DefaultHeadersConfig.writeHeaders(headers)
+		r.defaultHeaders.writeHeaders(headers)
+		r.RequestSpecificHeaders.writeHeaders(headers)
 
-	r.ResponseWriter.WriteHeader(r.statusCode)
+		r.ResponseWriter.WriteHeader(r.statusCode)
+	}
 	r.committed = true // we set committed to true to mark that the response has been written.
 	return r.ResponseWriter.Write(b)
 }
@@ -50,6 +49,6 @@ func (r *Response) StatusCode() int {
 	return r.statusCode
 }
 
-func(r *Response) IsCommitted()bool{
+func (r *Response) IsCommitted() bool {
 	return r.committed
 }

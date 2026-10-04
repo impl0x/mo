@@ -82,7 +82,7 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.store.clear()
 
 	route, err := m.router.Find(c, r.URL.Path, r.Method)
-	if err.IsNil() {
+	if !err.IsNil() {
 		c.JSON(err.Code, err) // either Method wrong or path Not found, either way we return a json error
 	} else {
 		h := route.Handler

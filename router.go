@@ -219,6 +219,7 @@ Outer:
 // The returned Route instance is a read only value, do not write to it and expect changes.
 func (str SegmentTreeRouter) Find(c *Context, path, method string) (RouteInfo, HttpError) {
 	path = cleanPathString(path)
+	path = strings.TrimPrefix(path, "/")
 	remainder := path
 	currNode := str.root
 Outer:
