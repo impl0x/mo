@@ -85,12 +85,8 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !err.IsNil() {
 		c.JSON(err.Code, err) // either Method wrong or path Not found, either way we return a json error
 	} else {
-		h := route.Handler
-		for _, v := range slices.Backward(m.Middlewares) { // wrapping with global middlewares
-			h = v(h)
-		}
-		m.HTTPErrorHandler(c, h(c)) // run the handler and pass the result to the error handler
-		if !c.response.committed {  // if user didn't write a response we by default send a no content status code response
+		m.HTTPErrorHandler(c, route.Handler(c)) // run the handler and pass the result to the error handler
+		if !c.response.committed {              // if user didn't write a response we by default send a no content status code response,
 			c.NoContent(http.StatusNoContent) // ignore error, returns nil always
 		}
 	}
@@ -101,9 +97,12 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	contextPool.Put(c)
 }
 
-// middleware is added in the format of (innermost, ... , outermost)
+// middleware is added in the format of (outermost, ... , innermost)
 func (m *Mo) add(path string, method string, handler HandlerFunc, mi []Middleware) RouteInfo {
-	for _, mw := range mi {
+	for _, mw := range slices.Backward(mi) {
+		handler = mw(handler)
+	}
+	for _, mw := range slices.Backward(m.Middlewares) {
 		handler = mw(handler)
 	}
 	r := RouteInfo{path, method, handler}

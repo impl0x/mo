@@ -154,8 +154,11 @@ func cleanPathString(p string) string {
 
 // Adds a path to the router
 func (str SegmentTreeRouter) Add(r RouteInfo) {
-	path := cleanPathString(r.Path)
+	path := r.Path
 	path = strings.TrimPrefix(path, "/")
+	if path[len(path)-1] != '/' {
+		path += "/" // need to suffix a '/' otherwise byte indexing fails on the last part
+	}
 	currNode := str.root
 	remainder := path
 
@@ -209,17 +212,18 @@ Outer:
 	// We add the handlers to the current node.
 	// Note: if a user adds another handler for the same path and method then the previous one gets overwritten.
 	currNode.methods.add(r.Method, r.Handler)
-	if !currNode.isHandler {
-		currNode.isHandler = true
-	}
+	currNode.isHandler = true
+
 }
 
 // Finds a path from the path and method given, returns a [HttpError] instance if not found or wrong method
 //
 // The returned Route instance is a read only value, do not write to it and expect changes.
 func (str SegmentTreeRouter) Find(c *Context, path, method string) (RouteInfo, HttpError) {
-	path = cleanPathString(path)
 	path = strings.TrimPrefix(path, "/")
+	if path[len(path)-1] != '/' {
+		path += "/" // need to suffix a '/' otherwise byte indexing fails on the last part
+	}
 	remainder := path
 	currNode := str.root
 Outer:
