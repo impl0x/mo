@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/impl0x/mo/modules/logger"
-	"github.com/impl0x/mo/validator/v2"
+	"github.com/impl0x/mo/validator/v3"
 )
 
 // Error Handler must handle nil, HttpErrorInterface and error. (internal)
@@ -31,10 +31,6 @@ type validationErrorJson struct {
 // Then return a valid json from JsonFormat() method and a valid status-code from StatusCode()
 func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 	return func(c *Context, err error) {
-		var jsonSyntaxErr *jsontext.SyntacticError
-		var jsonSemanticErr *json.SemanticError
-		var httpErr HttpError
-		var vdErr validator.GroupedValidationError
 		if c.response.committed {
 			if err == nil {
 				return
@@ -44,24 +40,23 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			}
 			return
 		}
-		switch {
-		case errors.As(err, &httpErr):
-			c.JSON(httpErr.StatusCode(), httpErr)
-		case errors.As(err, &vdErr):
-			c.JSON(http.StatusBadRequest, validationErrorJson{HttpError: ErrBadRequest, Errors: vdErr.ToJsonStructList()})
-		case errors.As(err, &jsonSyntaxErr):
+		if err == nil {
+			c.NoContent(http.StatusNoContent)
+		} else if e, ok := errors.AsType[HttpError](err); ok {
+			c.JSON(e.StatusCode(), e)
+		} else if e, ok := errors.AsType[validator.GroupedValidationError](err); ok {
+			c.JSON(http.StatusBadRequest, validationErrorJson{HttpError: ErrBadRequest, Errors: e.ToJsonStructList()})
+		} else if e, ok := errors.AsType[*jsontext.SyntacticError](err); ok {
 			c.JSON(http.StatusUnprocessableEntity, HttpError{
 				Code:    http.StatusUnprocessableEntity,
-				Message: "JSON syntax error at offset " + strconv.FormatInt(jsonSyntaxErr.ByteOffset, 10),
+				Message: "JSON syntax error at offset " + strconv.FormatInt(e.ByteOffset, 10),
 			})
-		case errors.As(err, &jsonSemanticErr):
+		} else if e, ok := errors.AsType[*json.SemanticError](err); ok {
 			c.JSON(http.StatusBadRequest, HttpError{
 				Code:    http.StatusBadRequest,
-				Message: "Wrong type used for field " + jsonSemanticErr.JSONPointer.LastToken() + " expected type: " + jsonSemanticErr.GoType.String(),
+				Message: "Wrong type used for field " + e.JSONPointer.LastToken() + " expected type: " + e.GoType.String(),
 			})
-		case err == nil:
-			c.NoContent(http.StatusNoContent)
-		default:
+		} else {
 			if err.Error() == "EOF" {
 				c.JSON(http.StatusUnprocessableEntity, HttpError{
 					Code:    http.StatusUnprocessableEntity,

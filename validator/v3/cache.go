@@ -220,7 +220,7 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 					// finally preparing our function
 					ruleFunc = func(v reflect.Value) *FieldValidateError {
 						if !fn(convFn(v), floatParam) {
-							return newFieldValidateError(errMsgPrefix+eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
+							return newFieldValidateError(errMsgPrefix+" "+eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
 						}
 						return nil
 					}

@@ -51,7 +51,7 @@ func Validate(value any) error {
 		for _, fn := range ruleFuncs {
 			err := fn(v)
 			if err != nil {
-				errs.Append(err)
+				errs = append(errs, err)
 			}
 		}
 	}
@@ -60,7 +60,8 @@ func Validate(value any) error {
 		v := rv.Field(field.index)
 		if field.isRequired && v.IsZero() {
 			// if required and not present we give error
-			return newFieldValidateError(rules.Required.ErrMsg, rules.RuleRequired, "", field, v)
+			errs = append(errs, newFieldValidateError(rules.Required.ErrMsg, rules.RuleRequired, "", field, v))
+			continue
 		} else if field.isOptional && v.IsZero() {
 			// if optional and value not present we skip the field for validation
 			continue
@@ -84,15 +85,15 @@ func Validate(value any) error {
 	}
 	if errs == nil {
 		// we cannot directly return "errs" from here even if it is nil, because of
-		// the way interfaces are implemented in go, in this function we return an 
-		// variable of type error as the second value and thus compiler has to box 
-		// our [GroupedValidationError] type to an error interface. An interface is 
+		// the way interfaces are implemented in go, in this function we return an
+		// variable of type error as the second value and thus compiler has to box
+		// our [GroupedValidationError] type to an error interface. An interface is
 		// implemented by having two pointers, one to the type and one to the value,
-		// and the way nil-ability is treated, that is if a interface is nil is by 
-		// checking if the type pointer is nil. So even if the variable having its 
+		// and the way nil-ability is treated, that is if a interface is nil is by
+		// checking if the type pointer is nil. So even if the variable having its
 		// value as nil it still has a type, in our case of type [GroupedValidationError].
-		// Therefore checking the returned error variable from this function for nil 
-		// will always result true no matter the value of the variable, just because 
+		// Therefore checking the returned error variable from this function for nil
+		// will always result true no matter the value of the variable, just because
 		// the variable has a type.
 		return nil
 	}

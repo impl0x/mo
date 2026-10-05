@@ -14,6 +14,7 @@ type errorConfig struct {
 // Config for some error settings
 var ErrorConfig = errorConfig{false, true}
 
+// Slice of [*FieldValidateError]
 type GroupedValidationError []*FieldValidateError
 
 // shows the first error
@@ -40,10 +41,6 @@ func (gve GroupedValidationError) Error() string {
 		}
 	}
 	return buf.String()
-}
-
-func (gve *GroupedValidationError) Append(elems ...*FieldValidateError) {
-	*gve = append(*gve, elems...)
 }
 
 // returns a slice of error structs which are compatible with json marshalling, can be safely given to json encoder
