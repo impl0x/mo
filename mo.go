@@ -62,10 +62,16 @@ func NewWithConfig(router Router, header HeadersManager, errorHandler HTTPErrorH
 
 // Starts listening on the address specified
 func (m *Mo) Start(addr string) error {
+	return m.StartServer(&http.Server{Addr: addr})
+}
+
+// Starts the server provided, addr must be set, handler is set automatically in this function
+func (m *Mo) StartServer(h *http.Server) error {
 	if m.Config.PrintStartMsg {
 		logger.Mo("Started Mo HTTP Server.")
 	}
-	return http.ListenAndServe(addr, m)
+	h.Handler=m
+	return h.ListenAndServe()
 }
 
 // the request flow looks like this
