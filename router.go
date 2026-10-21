@@ -156,7 +156,7 @@ func cleanPathString(p string) string {
 func (str SegmentTreeRouter) Add(r RouteInfo) {
 	path := r.Path
 	path = strings.TrimPrefix(path, "/")
-	if path[len(path)-1] != '/' {
+	if path != "" && path[len(path)-1] != '/' {
 		path += "/" // need to suffix a '/' otherwise byte indexing fails on the last part
 	}
 	currNode := str.root
@@ -221,7 +221,7 @@ Outer:
 // The returned Route instance is a read only value, do not write to it and expect changes.
 func (str SegmentTreeRouter) Find(c *Context, path, method string) (RouteInfo, HttpError) {
 	path = strings.TrimPrefix(path, "/")
-	if path[len(path)-1] != '/' {
+	if path != "" && path[len(path)-1] != '/' {
 		path += "/" // need to suffix a '/' otherwise byte indexing fails on the last part
 	}
 	remainder := path
