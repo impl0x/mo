@@ -139,6 +139,15 @@ func (c *Context) Get(key string) (any, bool) {
 	return v, ok
 }
 
+// Wrapper over [Context.Get] to panic if key not found
+func (c *Context) GetMust(key string) any {
+	v, ok := c.Get(key)
+	if !ok {
+		panic("mo: key not found in \"GetMust\" function")
+	}
+	return v
+}
+
 // Gets a value from the context storage (typed), not goroutine safe
 func (c *Context) GetTyped[T any](key string) (T, error) {
 	value, ok := c.store.Store[key]
@@ -152,6 +161,12 @@ func (c *Context) GetTyped[T any](key string) (T, error) {
 		return zero, ErrInvalidKeyType
 	}
 	return typed, nil
+}
+
+// Wrapper to always return a typed value from the map or panic 
+// if doesn't exist or doesn't match the type
+func (c *Context) GetTypedMust[T any](key string) T {
+	return c.GetMust(key).(T)
 }
 
 // Deletes a item in Store
