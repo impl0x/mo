@@ -128,7 +128,6 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 				}
 				// preparing the func
 				ruleFunc = func(v reflect.Value) *FieldValidateError {
-					println("inside fn ", nonEqRule.Validate(v.String()))
 					if !nonEqRule.Validate(v.String()) {
 						return newFieldValidateError(nonEqRule.ErrMsg, rule, "", fieldData, v)
 					}

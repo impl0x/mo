@@ -187,7 +187,6 @@ func (vd *validator) handleEqRules(eqRule string) ValidationError {
 		return newUserError("syntax error for tag", vd.parent, vd.f.fieldName)
 	}
 	rule := split[0]
-	// println(rule)
 	ruleValueStr := split[1]
 	var err ValidationError
 	switch rule {
