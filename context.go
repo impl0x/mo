@@ -81,7 +81,7 @@ func (c *Context) NoContent(code int) error {
 }
 
 // Blob sends a blob response with status code and content type.
-func (c *Context) Blob(code int, contentType string, b []byte) error {
+func (c *Context) BLOB(code int, contentType string, b []byte) error {
 	c.writeContentType(contentType)
 	c.response.WriteHeader(code)
 	_, err := c.response.Write(b)
@@ -101,7 +101,7 @@ func (c *Context) JSON(code int, target any) error {
 }
 
 func (c *Context) TEXT(code int, body string) error {
-	return c.Blob(code, MIMETextPlain, []byte(body))
+	return c.BLOB(code, MIMETextPlain, []byte(body))
 }
 
 // use get to retrieve values
@@ -120,6 +120,15 @@ func (c *Context) QueryParams() url.Values {
 func (c *Context) Param(key string) (string, bool) {
 	v, ok := c.store.Params[key]
 	return v, ok
+}
+
+// wrapper of [Context.Param] such that it panics if the value does not exist for the key
+func (c *Context) ParamMust(key string) string {
+	v, ok := c.store.Params[key]
+	if !ok {
+		panic("param does not exist")
+	}
+	return v
 }
 
 // ErrNonExistentKey is error that is returned when key does not exist
@@ -163,7 +172,7 @@ func (c *Context) GetTyped[T any](key string) (T, error) {
 	return typed, nil
 }
 
-// Wrapper to always return a typed value from the map or panic 
+// Wrapper to always return a typed value from the map or panic
 // if doesn't exist or doesn't match the type
 func (c *Context) GetTypedMust[T any](key string) T {
 	return c.GetMust(key).(T)
