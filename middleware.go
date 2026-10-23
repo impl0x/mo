@@ -7,8 +7,13 @@ func (m *Mo) Use(mi ...Middleware) {
 
 // Adds a middleware that runs after all the middlewares and handlers 
 // are done running and response has been committed.
-func (m *Mo) AddPostMiddleware(mi ...PostMiddleware) {
+func (m *Mo) AddPostMiddleware(mi ...PrePostMiddleware) {
 	m.PostMiddlewares = append(m.PostMiddlewares, mi...)
+}
+
+// Adds a middleware that runs before anything has ran, before router, middleware or handler.  
+func (m *Mo) AddPreMiddleware(mi ...PrePostMiddleware) {
+	m.PreMiddlewares = append(m.PreMiddlewares, mi...)
 }
 
 // Adds a middleware to this group, all handler registered after adding 

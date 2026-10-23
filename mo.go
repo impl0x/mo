@@ -9,14 +9,15 @@ import (
 
 type HandlerFunc func(*Context) error
 type Middleware func(HandlerFunc) HandlerFunc
-type PostMiddleware func(*Context)
+type PrePostMiddleware func(*Context)
 
 type Mo struct {
 	router           Router           // root router
 	HTTPErrorHandler HTTPErrorHandler // Error handler must also handle nil, because every handler return is at the end handed over to the errorHandler even if its a nil
 	Middlewares      []Middleware
-	PostMiddlewares  []PostMiddleware // runs after all the middlewares and handlers have been ran. used to logging or cleaning up, Don't use this to write to response or set status. This also runs when theres a routing error and no handler or middlewares run.
-	Headers          HeadersManager   // Headers, sent in every request
+	PreMiddlewares   []PrePostMiddleware // runs before router, middlewares or handler
+	PostMiddlewares  []PrePostMiddleware // runs after all the middlewares and handlers have been ran. used to logging or cleaning up, Don't use this to write to response or set status. This also runs when theres a routing error and no handler or middlewares run.
+	Headers          HeadersManager      // Headers, sent in every request
 	Config           MoConfig
 }
 
@@ -70,7 +71,7 @@ func (m *Mo) StartServer(h *http.Server) error {
 	if m.Config.PrintStartMsg {
 		logger.Mo("Started Mo HTTP Server.")
 	}
-	h.Handler=m
+	h.Handler = m
 	return h.ListenAndServe()
 }
 
@@ -87,6 +88,10 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// we clear the prev store
 	c.store.clear()
 
+	for _, v := range m.PreMiddlewares { // running all the pre middlewares
+		v(c) // we run pre middlewares always
+	}
+
 	route, err := m.router.Find(c, r.URL.Path, r.Method)
 	if !err.IsNil() {
 		c.JSON(err.Code, err) // either Method wrong or path Not found, either way we return a json error
@@ -96,7 +101,7 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			c.NoContent(http.StatusNoContent) // ignore error, returns nil always
 		}
 	}
-	for _, v := range slices.Backward(m.PostMiddlewares) { // running all the post middlewares
+	for _, v := range m.PostMiddlewares { // running all the post middlewares
 		v(c) // we run post middlewares no matter the failure or status of the request, especially for logging purposes.
 	}
 	// we do not bother cleaning the state because Get just overwrites the state.
