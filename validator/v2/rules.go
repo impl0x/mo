@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"slices"
-	"strings"
 )
 
 // ? ----- Utils -----
@@ -147,36 +145,36 @@ const (
 	ruleOneof      EqRule = "oneof"      // string					  			[]string
 )
 
-// ! eq rule funcs
-// these funcs are just one line bool returns but i wrote this to have them rule logic separated from reflection and validator logic
-// value is the field value in the struct and param is the tag parameter
-// example: in a field username string `validate:"min=2", where username is populated with "test" in a instance,
-// value will be len("test") = 4 and param will be 2 from the "min=2" tag.
-var (
-	eqRuleMin = func(value float64, param float64) bool {
-		return value > param
-	}
-	eqRuleMax = func(value float64, param float64) bool {
-		return value < param
-	}
-	eqRuleGte = eqRuleMin // logically the same function
-	eqRuleLte = eqRuleMax // ~
-	eqRuleLt  = func(value float64, param float64) bool {
-		return value <= param
-	}
-	eqRuleGt = func(value float64, param float64) bool {
-		return value >= param
-	}
-	eqRuleLen = func(value int, param int) bool {
-		return value == param
-	}
-	eqRuleStartswith = func(value string, param string) bool {
-		return strings.HasPrefix(value, param)
-	}
-	eqRuleEndswith = func(value string, param string) bool {
-		return strings.HasSuffix(value, param)
-	}
-	eqRuleOneof = func(value string, param []string) bool {
-		return slices.Contains(param, value)
-	}
-)
+// // ! eq rule funcs
+// // these funcs are just one line bool returns but i wrote this to have them rule logic separated from reflection and validator logic
+// // value is the field value in the struct and param is the tag parameter
+// // example: in a field username string `validate:"min=2", where username is populated with "test" in a instance,
+// // value will be len("test") = 4 and param will be 2 from the "min=2" tag.
+// var (
+// 	eqRuleMin = func(value float64, param float64) bool {
+// 		return value > param
+// 	}
+// 	eqRuleMax = func(value float64, param float64) bool {
+// 		return value < param
+// 	}
+// 	eqRuleGte = eqRuleMin // logically the same function
+// 	eqRuleLte = eqRuleMax // ~
+// 	eqRuleLt  = func(value float64, param float64) bool {
+// 		return value <= param
+// 	}
+// 	eqRuleGt = func(value float64, param float64) bool {
+// 		return value >= param
+// 	}
+// 	eqRuleLen = func(value int, param int) bool {
+// 		return value == param
+// 	}
+// 	eqRuleStartswith = func(value string, param string) bool {
+// 		return strings.HasPrefix(value, param)
+// 	}
+// 	eqRuleEndswith = func(value string, param string) bool {
+// 		return strings.HasSuffix(value, param)
+// 	}
+// 	eqRuleOneof = func(value string, param []string) bool {
+// 		return slices.Contains(param, value)
+// 	}
+// )
