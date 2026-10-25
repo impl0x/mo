@@ -20,15 +20,17 @@ type structData struct {
 }
 
 type structFieldData struct {
-	index      int
-	name       string
-	ruleFuncs  []ValidateFunc
-	fieldKind  reflect.Kind
-	isRequired bool
-	isOptional bool
-	isDive     bool
-	typ        reflect.Type
-	tag        reflect.StructTag
+	index         int
+	name          string
+	nameSpaceName string
+	ruleFuncs     []ValidateFunc
+	fieldKind     reflect.Kind
+	isStruct      bool
+	isRequired    bool
+	isOptional    bool
+	isDive        bool
+	typ           reflect.Type
+	tag           reflect.StructTag
 }
 
 // info:
@@ -44,12 +46,20 @@ type structFieldData struct {
 //
 // panics on:
 //   - if assumptions fail.
-func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
+func newStructDataWithCache(parentName string, structType reflect.Type) (structData, *UserError) {
 	if structType.Kind() != reflect.Struct {
 		panic("validator cache initialization: structType is not of type struct")
 	}
 	sd := structData{
 		fields: make([]structFieldData, 0), // allow it to grow
+	}
+
+	// apply namespace settings to struct name
+	rootName := structType.Name()
+	if DefaultNameSpaceSettings.UseSnakeCase {
+		rootName = snakeCasify(rootName)
+	} else if DefaultNameSpaceSettings.UseLowerCase {
+		rootName = strings.ToLower(rootName)
 	}
 	for i := range structType.NumField() {
 		currField := structType.Field(i)
@@ -58,16 +68,38 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 			continue
 		}
 		kind := currField.Type.Kind()
+		// apply namepsace rules
+		nameSpace := currField.Name
+		if DefaultNameSpaceSettings.UseSnakeCase {
+			nameSpace = snakeCasify(nameSpace)
+		} else if DefaultNameSpaceSettings.UseLowerCase {
+			nameSpace = strings.ToLower(nameSpace)
+		}
+		if parentName != "" {
+			nameSpace = parentName + "." + nameSpace
+		}
+		fieldData := structFieldData{
+			index:         i,
+			name:          currField.Name,
+			nameSpaceName: nameSpace,
+			ruleFuncs:     make([]ValidateFunc, 0), // let it grow, as this function runs only once per struct its okay to have expensive operations.
+			fieldKind:     kind,
+			typ:           currField.Type,
+			tag:           currField.Tag,
+		}
+
 		// if nested struct we recursively cache it again if it doesn't exist in cache already
 		if kind == reflect.Struct {
 			_, ok := structCache.Get(currField.Type)
 			if !ok {
-				sd, err := newStructDataWithCache(currField.Type)
+				sd, err := newStructDataWithCache(rootName, currField.Type)
 				if err != nil {
 					return structData{}, err
 				}
 				structCache.Add(currField.Type, sd)
 			}
+			fieldData.isStruct = true
+			sd.fields = append(sd.fields, fieldData)
 			continue
 		}
 		tag := currField.Tag.Get(TagName)
@@ -76,20 +108,10 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 			continue
 		}
 		// parse rules now
-		fieldRules := strings.Split(tag, ",") // "required,email" -> ["required","email"]
-
-		// create fieldData for each valid field of the struct
-		fieldData := structFieldData{
-			index:     i,
-			name:      currField.Name,
-			ruleFuncs: make([]ValidateFunc, 0), // let it grow, as this function runs only once per struct its okay to have expensive operations.
-			fieldKind: kind,
-			typ:       currField.Type,
-			tag:       currField.Tag,
-		}
+		fieldRules := strings.SplitSeq(tag, ",") // "required,email" -> ["required","email"]
 
 		// loop over rules
-		for _, rule := range fieldRules {
+		for rule := range fieldRules {
 			// first we need to check for required, optional and dive, because they are special cases,
 			// and just set the bool flag for them to true, the validator will handle the rest while validating.
 			switch rule {
@@ -284,4 +306,19 @@ func newStructDataWithCache(structType reflect.Type) (structData, *UserError) {
 		sd.fields = append(sd.fields, fieldData)
 	}
 	return sd, nil
+}
+
+func snakeCasify(s string) string {
+	var buf strings.Builder
+	buf.WriteByte(s[0] + 32)
+	for i := 1; i < len(s); i++ {
+		if s[i] >= 'A' && s[i] <= 'Z' {
+			buf.WriteByte('_')
+			buf.WriteByte(s[i] + 32)
+		} else {
+			buf.WriteByte(s[i])
+
+		}
+	}
+	return buf.String()
 }

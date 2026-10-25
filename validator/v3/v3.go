@@ -2,21 +2,24 @@ package validator
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/impl0x/mo/validator/v3/rules"
 )
 
 type NameSpaceSettings struct {
-	UseLowerCase      bool // true: user.age, false: User.Age
-	UseRootStructName bool // true: User.Address.City, false: Address.City
+	UseLowerCase      bool // true: age, false: Age
+	UseRootStructName bool // true: User.Address.City, false: Address.City // assuming user is the struct passed to be validated and address is a nested struct containing field city
+	UseSnakeCase      bool // true: remaining_attempts, false: RemainingAttempts, note: having use UseLowerCase turned on or off doesnt matter if this is true
 }
 
-// Read [NameSpaceSettings] for docs, this is used in [FieldValidateError].Namespace()
+// Read [NameSpaceSettings] for docs, this is used in the namespace methods,
+// by default namespaces look like this "remaining_attempts", "address.city"
 //
 // do not mutate while running, only mutate at the start because this is a global variable
 //
 // else manage your own mutex
-var DefaultNameSpaceSettings = NameSpaceSettings{true, false}
+var DefaultNameSpaceSettings = NameSpaceSettings{false, false, true}
 
 type ValidateFunc func(v reflect.Value) *FieldValidateError
 
@@ -24,7 +27,6 @@ type ValidateFunc func(v reflect.Value) *FieldValidateError
 //
 // output can be either a [*UserError] or [GroupedValidationError]
 func Validate(value any) error {
-	var errs GroupedValidationError
 	rv := reflect.ValueOf(value)
 	if rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
@@ -36,8 +38,17 @@ func Validate(value any) error {
 	sd, ok := structCache.Get(rt)
 	var err *UserError
 	if !ok {
+		parentName := ""
+		if DefaultNameSpaceSettings.UseRootStructName {
+			parentName = rt.Name()
+			if DefaultNameSpaceSettings.UseSnakeCase {
+				parentName = snakeCasify(parentName)
+			} else if DefaultNameSpaceSettings.UseLowerCase {
+				parentName = strings.ToLower(parentName)
+			}
+		}
 		// generate new structData for the struct
-		sd, err = newStructDataWithCache(rt)
+		sd, err = newStructDataWithCache(parentName, rt)
 		if err != nil {
 			return err
 		}
@@ -47,6 +58,11 @@ func Validate(value any) error {
 
 	// takes a value and validateFunc slice and loops over all the functions to apply it to the value,
 	// and appends any errors to the closure errs variable
+	return validate(sd, rv)
+}
+
+func validate(sd structData, rv reflect.Value) error {
+	var errs GroupedValidationError
 	fnWrapper := func(v reflect.Value, ruleFuncs []ValidateFunc) {
 		for _, fn := range ruleFuncs {
 			err := fn(v)
@@ -58,6 +74,16 @@ func Validate(value any) error {
 
 	for _, field := range sd.fields {
 		v := rv.Field(field.index)
+		if field.isStruct {
+			sdNested, ok := structCache.Get(field.typ)
+			if !ok {
+				panic("validator: nested cached type should exist")
+			}
+			err := validate(sdNested, v)
+			if err != nil {
+				errs = append(errs, err.(GroupedValidationError)...)
+			}
+		}
 		if field.isRequired && v.IsZero() {
 			// if required and not present we give error
 			errs = append(errs, newFieldValidateError(rules.Required.ErrMsg, rules.RuleRequired, "", field, v))

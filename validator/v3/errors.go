@@ -95,10 +95,11 @@ type FieldValidateError struct {
 	rule    string
 	param   string
 	t       struct {
-		index int
-		name  string            // field name
-		tag   reflect.StructTag // field tag
-		typ   reflect.Type      // field type
+		index     int
+		name      string            // raw field name
+		nameSpace string            // name with modifications according to [DefaultNamespaceSettings]
+		tag       reflect.StructTag // field tag
+		typ       reflect.Type      // field type
 	}
 	v reflect.Value // field value
 }
@@ -111,11 +112,12 @@ func newFieldValidateError(msg, rule, ruleParam string, fieldTypeData structFiel
 		rule:    rule,
 		param:   ruleParam,
 		t: struct {
-			index int
-			name  string
-			tag   reflect.StructTag
-			typ   reflect.Type
-		}{fieldTypeData.index, fieldTypeData.name, fieldTypeData.tag, fieldTypeData.typ},
+			index     int
+			name      string
+			nameSpace string
+			tag       reflect.StructTag
+			typ       reflect.Type
+		}{fieldTypeData.index, fieldTypeData.name, fieldTypeData.nameSpaceName, fieldTypeData.tag, fieldTypeData.typ},
 		v: fieldValue,
 	}
 }
@@ -142,15 +144,15 @@ func (ve *FieldValidateError) Tag() string {
 	return string(ve.t.tag)
 }
 
+func (ve *FieldValidateError) StructName() string {
+	return ve.parent
+}
+
 // returns parent struct + field name, uses [DefaultNameSpaceSettings] for the formatting by default
 //
 // ex: User.Age
 func (ve *FieldValidateError) Namespace() string {
-	fieldName := ve.t.name
-	if DefaultNameSpaceSettings.UseLowerCase {
-		fieldName = strings.ToLower(fieldName)
-	}
-	return ve.parent + fieldName
+	return ve.t.nameSpace
 }
 
 // returns the value of the field, warning it is inefficient for smaller values as go has to box it into an interface
