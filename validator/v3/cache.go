@@ -207,14 +207,23 @@ func newStructDataWithCache(parentName string, structType reflect.Type) (structD
 					// creating conversion functions for value
 					var convFn func(v reflect.Value) float64
 					var errMsgPrefix string
-					if slices.ContainsFunc(eqRule.FieldTypes, func(t reflect.Kind) bool {
-						return slices.Contains(slices.Concat(rules.TypeString, rules.TypeCollection), t)
-					}) {
+					if slices.Contains(slices.Concat(rules.TypeString, rules.TypeCollection), kind) &&
+						slices.ContainsFunc(
+							eqRule.FieldTypes,
+							func(k reflect.Kind) bool {
+								return slices.Contains(slices.Concat(rules.TypeString, rules.TypeCollection), k)
+							},
+						) {
 						errMsgPrefix = "Length"
 						convFn = func(v reflect.Value) float64 {
 							return float64(v.Len())
 						}
-					} else if slices.ContainsFunc(eqRule.FieldTypes, func(t reflect.Kind) bool { return slices.Contains(rules.TypeNumeric, t) }) {
+
+					} else if slices.Contains(rules.TypeNumeric, kind) &&
+						slices.ContainsFunc(
+							eqRule.FieldTypes,
+							func(k reflect.Kind) bool { return slices.Contains(rules.TypeNumeric, k) },
+						) {
 						errMsgPrefix = "Value"
 						convFn = func(v reflect.Value) float64 {
 							return v.Convert(reflect.TypeFor[float64]()).Float()
@@ -245,7 +254,13 @@ func newStructDataWithCache(parentName string, structType reflect.Type) (structD
 						}
 						return nil
 					}
-
+				case rules.RuleEq:
+					ruleFunc = func(v reflect.Value) *FieldValidateError {
+						if !rules.FnEq(v.Interface(), param) {
+							return newFieldValidateError(eqRule.FnErrMsgTemplate(param), ruleName, param, fieldData, v)
+						}
+						return nil
+					}
 				case rules.RuleLen:
 					// param validation
 					if slices.Compare(eqRule.ParamTypes, rules.TypeUInt) != 0 { // as they have only type uint, we panic as we cannot validate then
