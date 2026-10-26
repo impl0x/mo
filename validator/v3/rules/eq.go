@@ -32,6 +32,7 @@ const (
 	RuleGte        = "gte"
 	RuleLt         = "lt"
 	RuleGt         = "gt"
+	RuleEq         = "eq"
 	RuleLen        = "len"
 	RuleStartswith = "startswith"
 	RuleEndswith   = "endswith"
@@ -65,7 +66,7 @@ var (
 		RuleGte,
 		slices.Concat(TypeString, TypeCollection, TypeNumeric),
 		TypeNumeric,
-		func(param string) string { return "must be greater than or equal to" + param },
+		func(param string) string { return "must be greater than or equal to " + param },
 	}
 	// value/length must be less than [param].
 	Lt = EqRule{
@@ -80,6 +81,12 @@ var (
 		slices.Concat(TypeString, TypeCollection, TypeNumeric),
 		TypeNumeric,
 		func(param string) string { return "must be greater than " + param },
+	}
+	Eq = EqRule{
+		RuleEq,
+		slices.Concat(TypeString, TypeNumeric),
+		slices.Concat(TypeString, TypeNumeric),
+		func(param string) string { return "Value must be equal to " + param },
 	}
 	// length must be equal to [param].
 	Len = EqRule{
@@ -132,6 +139,9 @@ var (
 	FnGt = func(value float64, param float64) bool {
 		return value >= param
 	}
+	FnEq = func(value any, param any) bool {
+		return value == param
+	}
 	FnLen = func(value uint, param uint) bool {
 		return value == param
 	}
@@ -171,6 +181,8 @@ func EqHit(ruleName string) EqRule {
 		return Lt
 	case RuleGt:
 		return Gt
+	case RuleEq:
+		return Eq
 	case RuleLen:
 		return Len
 	case RuleStartswith:
