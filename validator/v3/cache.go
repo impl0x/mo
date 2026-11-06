@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/impl0x/go-utils/cache"
 	"github.com/impl0x/mo/validator/v3/rules"
@@ -324,16 +325,24 @@ func newStructDataWithCache(parentName string, structType reflect.Type) (structD
 }
 
 func snakeCasify(s string) string {
-	var buf strings.Builder
-	buf.WriteByte(s[0] + 32)
-	for i := 1; i < len(s); i++ {
-		if s[i] >= 'A' && s[i] <= 'Z' {
-			buf.WriteByte('_')
-			buf.WriteByte(s[i] + 32)
-		} else {
-			buf.WriteByte(s[i])
+	var b strings.Builder
+	runes := []rune(s)
 
+	for i, r := range runes {
+		if unicode.IsUpper(r) {
+			if i > 0 {
+				prev := runes[i-1]
+				if unicode.IsLower(prev) || unicode.IsDigit(prev) {
+					b.WriteByte('_')
+				} else if i+1 < len(runes) && unicode.IsLower(runes[i+1]) {
+					b.WriteByte('_')
+				}
+			}
+			b.WriteRune(unicode.ToLower(r))
+		} else {
+			b.WriteRune(r)
 		}
 	}
-	return buf.String()
+
+	return b.String()
 }

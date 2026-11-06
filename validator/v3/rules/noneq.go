@@ -137,7 +137,7 @@ var (
 var (
 	FnEmail = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]*[a-zA-Z][a-zA-Z0-9]*$`).MatchString
 	FnE164  = regexp.MustCompile(`^\+[1-9]\d{1,14}$`).MatchString
-	FnUrl   = regexp.MustCompile(`^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$`).MatchString
+	FnUrl   = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s]+$`).MatchString
 	FnUuid  = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`).MatchString
 
 	// Logic for the functions below are basically looping over
