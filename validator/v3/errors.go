@@ -26,7 +26,7 @@ func (gve GroupedValidationError) Error() string {
 	buf.Grow(128) // eyeballing
 	buf.WriteString("Field validation errors, on field ")
 	buf.WriteRune('"')
-	buf.WriteString(zeroElem.t.name)
+	buf.WriteString(zeroElem.Namespace())
 	buf.WriteRune('"')
 	buf.WriteString(", ")
 	buf.WriteRune('"')
