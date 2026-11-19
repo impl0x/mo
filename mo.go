@@ -94,7 +94,7 @@ func (m *Mo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	route, err := m.router.Find(c, r.URL.Path, r.Method)
 	if !err.IsNil() {
-		c.JSON(err.Code, err) // either Method wrong or path Not found, either way we return a json error
+		m.HTTPErrorHandler(c, err) // not found or method not allowed error, pass it to error handler as usual.
 	} else {
 		m.HTTPErrorHandler(c, route.Handler(c)) // run the handler and pass the result to the error handler
 		if !c.response.committed {              // if user didn't write a response we by default send a no content status code response,
