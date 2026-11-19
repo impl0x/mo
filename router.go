@@ -145,12 +145,6 @@ func NewSegmentTreeRouter() SegmentTreeRouter {
 	return SegmentTreeRouter{&node{}}
 }
 
-func cleanPathString(p string) string {
-	if DefaultRouterConfig.TrimSuffixSlashes {
-		return strings.TrimSuffix(p, "/")
-	}
-	return p
-}
 
 // Adds a path to the router
 func (str SegmentTreeRouter) Add(r RouteInfo) {
