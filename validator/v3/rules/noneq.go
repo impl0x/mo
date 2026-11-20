@@ -141,20 +141,29 @@ var (
 	FnUuid  = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`).MatchString
 
 	// Logic for the functions below are basically looping over
-	// the string using loopStr util func and passing in
-	// the condition which will return on the first true,
-	// so we pass in the not of our condition so if even one rune fails
-	// the loop stops and returns true to which we put a not over the result again
-	// and return the opposite as we need to fail if the fail condition satisfied.
+	// each rune in the string using [loopStr] and in [loopStr]
+	// we pass a function for our condition.
+	// our goal is to exit on the first failure of our condition,
+	// and loopStr exits on first true return of its condition and
+	// returns true if condition returned and false if condition didnt return
+	//
+	// so we need the condition functions to return true to fail the string,
+	// so it needs to be a NOT of whatever we are checking, for example if
+	// we are checking for numeric then we exit when its not a numeric, so
+	// returning !runeIsNum(c) will return true if rune was not a number, which
+	// will then return the true to loopStr which will then exit with another true
+	//
+	// and that true can be again passed through a NOT to indicate that the function
+	// failed and the string does not satisfy condition
 
 	FnAlpha = func(s string) bool {
 		return !loopStr(s, func(c rune) bool {
-			return !(runeIsLower(c) || runeIsUpper(c)) // if not both lower or upper
+			return !runeIsLower(c) && !runeIsUpper(c) // need to be both lower or upper, same as !(isLower || isUpper), applying De Morgan's law
 		})
 	}
 	FnAlphanum = func(s string) bool {
 		return !loopStr(s, func(c rune) bool {
-			return !(runeIsLower(c) || runeIsUpper(c) || runeIsNum(c)) // if not lower, upper or number
+			return !runeIsLower(c) && !runeIsUpper(c) && !runeIsNum(c)
 		})
 	}
 	FnNumeric = func(s string) bool {
